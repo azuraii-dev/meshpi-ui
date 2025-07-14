@@ -55,12 +55,20 @@ class ConfigUI:
         self.parent.columnconfigure(0, weight=1)
         self.parent.rowconfigure(0, weight=1)
         
-        # Create scrollable content
-        config_canvas = tk.Canvas(self.parent)
+        # Create scrollable content with better performance
+        config_canvas = tk.Canvas(self.parent, highlightthickness=0)
         config_scrollbar = ttk.Scrollbar(self.parent, orient="vertical", command=config_canvas.yview)
         config_content = ttk.Frame(config_canvas)
         
-        config_content.bind('<Configure>', lambda e: config_canvas.configure(scrollregion=config_canvas.bbox("all")))
+        # Optimize scrolling performance
+        def on_canvas_configure(event):
+            config_canvas.configure(scrollregion=config_canvas.bbox("all"))
+        
+        def on_mousewheel(event):
+            config_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        config_content.bind('<Configure>', on_canvas_configure)
+        config_canvas.bind("<MouseWheel>", on_mousewheel)
         
         config_canvas.create_window((0, 0), window=config_content, anchor="nw")
         config_canvas.configure(yscrollcommand=config_scrollbar.set)
@@ -149,9 +157,53 @@ class ConfigUI:
         self.battery_label = ttk.Label(power_frame, text="N/A", foreground="gray")
         self.battery_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
         
+        # GPS settings
+        gps_frame = ttk.LabelFrame(config_content, text="GPS Settings", padding="10")
+        gps_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        gps_frame.columnconfigure(1, weight=1)
+        
+        # GPS status display
+        ttk.Label(gps_frame, text="GPS Status:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        self.gps_status_display = ttk.Label(gps_frame, text="N/A", foreground="gray")
+        self.gps_status_display.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
+        
+        # GPS enabled checkbox
+        ttk.Label(gps_frame, text="GPS Enabled:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.gps_enabled_var = tk.BooleanVar()
+        gps_enabled_check = ttk.Checkbutton(gps_frame, variable=self.gps_enabled_var, command=self.toggle_gps)
+        gps_enabled_check.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=2)
+        
+        # GPS update interval
+        ttk.Label(gps_frame, text="Update Interval (sec):").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.gps_interval_var = tk.StringVar(value="30")
+        interval_frame = ttk.Frame(gps_frame)
+        interval_frame.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=2)
+        
+        interval_entry = ttk.Entry(interval_frame, textvariable=self.gps_interval_var, width=10)
+        interval_entry.grid(row=0, column=0, padx=(0, 10))
+        
+        ttk.Button(interval_frame, text="Update", command=self.update_gps_interval).grid(row=0, column=1)
+        
+        # GPS broadcast interval
+        ttk.Label(gps_frame, text="Broadcast Interval (sec):").grid(row=3, column=0, sticky=tk.W, pady=2)
+        self.gps_broadcast_var = tk.StringVar(value="900")
+        broadcast_frame = ttk.Frame(gps_frame)
+        broadcast_frame.grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=2)
+        
+        broadcast_entry = ttk.Entry(broadcast_frame, textvariable=self.gps_broadcast_var, width=10)
+        broadcast_entry.grid(row=0, column=0, padx=(0, 10))
+        
+        ttk.Button(broadcast_frame, text="Update", command=self.update_gps_broadcast).grid(row=0, column=1)
+        
+        # GPS info label
+        gps_info_label = ttk.Label(gps_frame, 
+                                  text="Update: How often GPS reads position\nBroadcast: How often position is shared with mesh", 
+                                  foreground="gray", font=("Arial", 8))
+        gps_info_label.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=5)
+        
         # Actions frame
         actions_frame = ttk.LabelFrame(config_content, text="Actions", padding="10")
-        actions_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        actions_frame.grid(row=6, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
         
         # Action buttons
         ttk.Button(actions_frame, text="Reboot Device", command=self.reboot_device).grid(row=0, column=0, padx=5, pady=2)
@@ -160,7 +212,7 @@ class ConfigUI:
         
         # Configuration Profiles Section
         profiles_frame = ttk.LabelFrame(config_content, text="Configuration Profiles", padding="10")
-        profiles_frame.grid(row=6, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        profiles_frame.grid(row=7, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
         profiles_frame.columnconfigure(1, weight=1)
         
         # Current profile display
@@ -192,7 +244,7 @@ class ConfigUI:
         
         # Multi-Device Management Section
         devices_frame = ttk.LabelFrame(config_content, text="Multi-Device Management", padding="10")
-        devices_frame.grid(row=7, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        devices_frame.grid(row=8, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
         devices_frame.columnconfigure(0, weight=1)
         devices_frame.rowconfigure(0, weight=1)
         
@@ -264,6 +316,9 @@ class ConfigUI:
                 # Update battery level
                 if 'battery' in device_info:
                     self.battery_label.config(text=f"{device_info['battery']}%")
+                
+                # Update GPS status display
+                self.update_gps_status_display()
                         
         except Exception as e:
             logger.error(f"Error getting device info: {e}")
@@ -797,4 +852,123 @@ class ConfigUI:
                 
         except Exception as e:
             logger.error(f"Error loading managed devices: {e}")
-            self.managed_devices = [] 
+            self.managed_devices = []
+            
+    def toggle_gps(self):
+        """Toggle GPS enabled/disabled"""
+        if not self.interface_manager.is_connected():
+            messagebox.showwarning("Warning", "Please connect to a device first")
+            self.gps_enabled_var.set(False)  # Reset checkbox
+            return
+            
+        try:
+            enabled = self.gps_enabled_var.get()
+            
+            # Send GPS enable/disable command to device
+            success = self.interface_manager.set_gps_enabled(enabled)
+            
+            if success:
+                status = "enabled" if enabled else "disabled"
+                messagebox.showinfo("GPS Settings", f"GPS {status} successfully")
+                self.update_gps_status_display()
+            else:
+                messagebox.showerror("Error", f"Failed to {'enable' if enabled else 'disable'} GPS")
+                self.gps_enabled_var.set(not enabled)  # Reset checkbox
+                
+        except Exception as e:
+            logger.error(f"Error toggling GPS: {e}")
+            messagebox.showerror("Error", f"Failed to toggle GPS: {e}")
+            self.gps_enabled_var.set(not self.gps_enabled_var.get())  # Reset checkbox
+            
+    def update_gps_interval(self):
+        """Update GPS update interval"""
+        if not self.interface_manager.is_connected():
+            messagebox.showwarning("Warning", "Please connect to a device first")
+            return
+            
+        try:
+            interval = int(self.gps_interval_var.get())
+            if interval < 1 or interval > 3600:
+                messagebox.showwarning("Warning", "GPS update interval must be between 1 and 3600 seconds")
+                return
+                
+            # Send GPS interval command to device
+            success = self.interface_manager.set_gps_interval(interval)
+            
+            if success:
+                messagebox.showinfo("GPS Settings", f"GPS update interval set to {interval} seconds")
+                self.update_gps_status_display()
+            else:
+                messagebox.showerror("Error", "Failed to update GPS interval")
+                
+        except ValueError:
+            messagebox.showwarning("Warning", "Please enter a valid number for GPS interval")
+        except Exception as e:
+            logger.error(f"Error updating GPS interval: {e}")
+            messagebox.showerror("Error", f"Failed to update GPS interval: {e}")
+            
+    def update_gps_broadcast(self):
+        """Update GPS broadcast interval"""
+        if not self.interface_manager.is_connected():
+            messagebox.showwarning("Warning", "Please connect to a device first")
+            return
+            
+        try:
+            interval = int(self.gps_broadcast_var.get())
+            if interval < 30 or interval > 86400:  # 30 seconds to 24 hours
+                messagebox.showwarning("Warning", "GPS broadcast interval must be between 30 and 86400 seconds")
+                return
+                
+            # Send GPS broadcast interval command to device
+            success = self.interface_manager.set_gps_broadcast_interval(interval)
+            
+            if success:
+                messagebox.showinfo("GPS Settings", f"GPS broadcast interval set to {interval} seconds")
+                self.update_gps_status_display()
+            else:
+                messagebox.showerror("Error", "Failed to update GPS broadcast interval")
+                
+        except ValueError:
+            messagebox.showwarning("Warning", "Please enter a valid number for GPS broadcast interval")
+        except Exception as e:
+            logger.error(f"Error updating GPS broadcast interval: {e}")
+            messagebox.showerror("Error", f"Failed to update GPS broadcast interval: {e}")
+            
+    def update_gps_status_display(self):
+        """Update GPS status display"""
+        if not self.interface_manager.is_connected():
+            self.gps_status_display.config(text="N/A", foreground="gray")
+            self.gps_enabled_var.set(False)
+            return
+            
+        try:
+            # Get GPS status from interface manager
+            gps_status = self.interface_manager.get_gps_status()
+            
+            if gps_status:
+                status = gps_status.get('status', 'unknown')
+                satellites = gps_status.get('satellites', 0)
+                fix = gps_status.get('fix', False)
+                
+                if status == 'fixed':
+                    self.gps_status_display.config(text=f"Fixed ({satellites} sats)", foreground="green")
+                    self.gps_enabled_var.set(True)
+                elif status == 'searching':
+                    self.gps_status_display.config(text=f"Searching ({satellites} sats)", foreground="orange")
+                    self.gps_enabled_var.set(True)
+                elif status == 'no_signal':
+                    self.gps_status_display.config(text="No Signal", foreground="red")
+                    self.gps_enabled_var.set(True)
+                elif status == 'disabled':
+                    self.gps_status_display.config(text="Disabled", foreground="gray")
+                    self.gps_enabled_var.set(False)
+                else:
+                    self.gps_status_display.config(text="Unknown", foreground="gray")
+                    self.gps_enabled_var.set(False)
+            else:
+                self.gps_status_display.config(text="N/A", foreground="gray")
+                self.gps_enabled_var.set(False)
+                
+        except Exception as e:
+            logger.debug(f"Error updating GPS status display: {e}")
+            self.gps_status_display.config(text="Error", foreground="red") 

@@ -102,6 +102,10 @@ class MeshtasticApp:
         self.status_label = ttk.Label(conn_frame, text="Status: Disconnected", foreground="red")
         self.status_label.grid(row=0, column=6, padx=(20, 0))
         
+        # GPS Status indicator
+        self.gps_status_label = ttk.Label(conn_frame, text="🛰️ GPS: N/A", foreground="gray")
+        self.gps_status_label.grid(row=0, column=7, padx=(20, 0))
+        
     def create_main_content(self, parent):
         """Create the main tabbed interface"""
         # Create notebook for tabs
@@ -164,29 +168,38 @@ class MeshtasticApp:
         """Start processing UI events"""
         def process_ui_events():
             try:
-                msg_type, data = self.ui_event_queue.get(timeout=0.1)
+                # Process multiple events in one go to reduce frequency
+                events_processed = 0
+                max_events_per_cycle = 5
                 
-                # Handle different message types
-                if msg_type == 'message':
-                    self.handle_message_received(data)
-                elif msg_type == 'node_updated':
-                    self.handle_node_updated(data)
-                elif msg_type == 'connection_established':
-                    self.handle_connection_established()
-                elif msg_type == 'connection_lost':
-                    self.handle_connection_lost()
-                elif msg_type == 'ack_received':
-                    self.handle_ack_received(data)
-                elif msg_type == 'routing_error':
-                    self.handle_routing_error(data)
+                while events_processed < max_events_per_cycle:
+                    try:
+                        msg_type, data = self.ui_event_queue.get(timeout=0.01)
+                        
+                        # Handle different message types
+                        if msg_type == 'message':
+                            self.handle_message_received(data)
+                        elif msg_type == 'node_updated':
+                            self.handle_node_updated(data)
+                        elif msg_type == 'connection_established':
+                            self.handle_connection_established()
+                        elif msg_type == 'connection_lost':
+                            self.handle_connection_lost()
+                        elif msg_type == 'ack_received':
+                            self.handle_ack_received(data)
+                        elif msg_type == 'routing_error':
+                            self.handle_routing_error(data)
+                            
+                        events_processed += 1
+                        
+                    except queue.Empty:
+                        break
                     
-            except queue.Empty:
-                pass
             except Exception as e:
                 logger.error(f"Error processing UI event: {e}")
                 
-            # Schedule next processing
-            self.root.after(50, process_ui_events)
+            # Schedule next processing (reduced frequency)
+            self.root.after(100, process_ui_events)
             
         # Start processing
         self.root.after(100, process_ui_events)
@@ -248,21 +261,19 @@ class MeshtasticApp:
         conn_type = self.connection_type.get()
         param = self.connection_param.get()
         
-        def connect_thread():
-            try:
-                self.update_connection_status("Connecting...")
-                success = self.interface_manager.connect(conn_type, param)
+        # Disable connect button during connection attempt
+        self.connect_btn.config(state="disabled")
+        self.update_connection_status("Connecting...")
+        
+        def connection_callback(success, message):
+            """Callback for connection result"""
+            if success:
+                self.root.after(0, self.on_connect_success)
+            else:
+                self.root.after(0, lambda: self.on_connect_failed(message))
                 
-                if success:
-                    self.root.after(0, self.on_connect_success)
-                else:
-                    self.root.after(0, self.on_connect_failed)
-                    
-            except Exception as e:
-                logger.error(f"Connection error: {e}")
-                self.root.after(0, self.on_connect_failed)
-                
-        threading.Thread(target=connect_thread, daemon=True).start()
+        # Connect with callback
+        self.interface_manager.connect(conn_type, param, connection_callback)
         
     def disconnect_device(self):
         """Disconnect from Meshtastic device"""
@@ -276,17 +287,20 @@ class MeshtasticApp:
         self.status_label.config(text="Status: Connected", foreground="green")
         self.connection_status_text.set("Connected")
         
+        # Check GPS status immediately after connection
+        self.root.after(1000, self.check_gps_status)  # Check after 1 second delay
+        
         # Refresh device info in config tab
         if hasattr(self.config_ui, 'get_device_info'):
-            self.config_ui.get_device_info()
+            self.root.after(500, self.config_ui.get_device_info)  # Slight delay to ensure connection is stable
         
-    def on_connect_failed(self):
+    def on_connect_failed(self, error_message="Failed to connect to device"):
         """Handle failed connection"""
         self.connect_btn.config(state="normal")
         self.disconnect_btn.config(state="disabled")
         self.status_label.config(text="Status: Connection Failed", foreground="red")
         self.connection_status_text.set("Connection Failed")
-        messagebox.showerror("Connection Error", "Failed to connect to device")
+        messagebox.showerror("Connection Error", error_message)
         
     def on_disconnect(self):
         """Handle disconnection"""
@@ -294,6 +308,9 @@ class MeshtasticApp:
         self.disconnect_btn.config(state="disabled")
         self.status_label.config(text="Status: Disconnected", foreground="red")
         self.connection_status_text.set("Disconnected")
+        
+        # Clear GPS status
+        self.gps_status_label.config(text="🛰️ GPS: N/A", foreground="gray")
         
         # Clear node data in UI components
         if hasattr(self.map_ui, 'update_nodes_display'):
@@ -307,8 +324,41 @@ class MeshtasticApp:
         """Update connection status"""
         self.status_text.set(status)
         
+    def check_gps_status(self):
+        """Check and update GPS status"""
+        if not self.interface_manager.is_connected():
+            self.gps_status_label.config(text="🛰️ GPS: N/A", foreground="gray")
+            return
+            
+        try:
+            # Get detailed GPS status from interface manager
+            gps_status = self.interface_manager.get_gps_status()
+            
+            status = gps_status.get('status', 'unknown')
+            satellites = gps_status.get('satellites', 0)
+            
+            if status == 'fixed':
+                self.gps_status_label.config(text=f"🛰️ GPS: Fixed ({satellites} sats)", foreground="green")
+            elif status == 'searching':
+                self.gps_status_label.config(text=f"🛰️ GPS: Searching ({satellites} sats)", foreground="orange")
+            elif status == 'no_signal':
+                self.gps_status_label.config(text="🛰️ GPS: No Signal", foreground="red")
+            elif status == 'disabled':
+                self.gps_status_label.config(text="🛰️ GPS: Disabled", foreground="gray")
+            elif status == 'disconnected':
+                self.gps_status_label.config(text="🛰️ GPS: N/A", foreground="gray")
+            else:
+                self.gps_status_label.config(text="🛰️ GPS: Error", foreground="red")
+                    
+        except Exception as e:
+            logger.debug(f"Error checking GPS status: {e}")
+            self.gps_status_label.config(text="🛰️ GPS: Error", foreground="red")
+        
     def start_periodic_updates(self):
         """Start periodic updates for UI components"""
+        # Separate update frequencies for different components
+        self.update_counter = 0
+        
         def update_loop():
             try:
                 # Only update if connected
@@ -316,17 +366,24 @@ class MeshtasticApp:
                     # Get current nodes from interface manager
                     nodes = self.interface_manager.get_nodes()
                     
-                    # Update analytics data
-                    if hasattr(self.analytics_ui, 'update_data'):
-                        self.analytics_ui.update_data(nodes)
-                    
-                    # Update network topology
-                    if hasattr(self.network_ui, 'refresh_network_topology'):
-                        self.network_ui.refresh_network_topology(nodes)
-                    
-                    # Update node count in status
+                    # Update node count in status (every update)
                     node_count = len(nodes)
                     self.status_text.set(f"Ready - {node_count} nodes")
+                    
+                    # Update GPS status (every update)
+                    self.check_gps_status()
+                    
+                    # Update analytics data less frequently (every 3rd update = 30 seconds)
+                    if self.update_counter % 3 == 0:
+                        if hasattr(self.analytics_ui, 'update_data'):
+                            self.analytics_ui.update_data(nodes)
+                    
+                    # Update network topology less frequently (every 2nd update = 20 seconds)
+                    if self.update_counter % 2 == 0:
+                        if hasattr(self.network_ui, 'refresh_network_topology'):
+                            self.network_ui.refresh_network_topology(nodes)
+                    
+                    self.update_counter += 1
                     
             except Exception as e:
                 logger.error(f"Error in periodic update: {e}")

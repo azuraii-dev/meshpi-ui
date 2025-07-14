@@ -334,6 +334,29 @@ class DataLogger:
             logger.warning("Batch queue full, processing immediately")
             self._process_single_operation(operation)
             
+    def log_message(self, message_data):
+        """Log a message (wrapper for queue_message for UI compatibility)"""
+        self.queue_message(message_data)
+        
+    def log_emergency_event(self, source, event_type, lat, lon, message):
+        """Log an emergency event"""
+        operation = {
+            'type': 'log_emergency_event',
+            'data': (
+                source,
+                event_type,
+                lat,
+                lon,
+                message,
+                datetime.now()
+            )
+        }
+        try:
+            self.batch_queue.put_nowait(operation)
+        except queue.Full:
+            logger.warning("Batch queue full, processing emergency event immediately")
+            self._process_single_operation(operation)
+            
     def queue_node_update(self, node_data):
         """Queue a node update for batch processing"""
         node_id = node_data.get('node_id', '')
@@ -436,6 +459,12 @@ class DataLogger:
                     cursor.execute('''
                         INSERT INTO node_positions 
                         (node_id, latitude, longitude, altitude, timestamp, accuracy)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', data)
+                elif op_type == 'log_emergency_event':
+                    cursor.execute('''
+                        INSERT INTO emergency_events 
+                        (node_id, event_type, latitude, longitude, message, timestamp)
                         VALUES (?, ?, ?, ?, ?, ?)
                     ''', data)
                 

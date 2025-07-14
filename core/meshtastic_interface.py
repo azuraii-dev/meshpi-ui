@@ -109,7 +109,7 @@ class MeshtasticInterface:
                                       f"• IP address/hostname is correct\n\n"
                                       f"Original error: {tcp_error}")
                 
-                # Validate the connection
+                # Validate the connection with a longer timeout for better reliability
                 if not self.validate_connection():
                     raise Exception("Connection established but device is not responding properly.\n\n"
                                   "This could indicate:\n• Device is not a Meshtastic device\n"
@@ -136,6 +136,7 @@ class MeshtasticInterface:
                     
             except Exception as e:
                 self.connection_status = "Failed"
+                self.connection_validated = False
                 error_message = str(e)
                 logger.error(f"Connection failed: {error_message}")
                 
@@ -166,15 +167,31 @@ class MeshtasticInterface:
             if not hasattr(self.interface, 'localNode'):
                 return False
                 
-            # Wait a moment for the interface to initialize
-            time.sleep(0.5)
+            # Wait longer for the interface to fully initialize
+            time.sleep(1.5)
             
-            # Try to send a heartbeat to test the connection
-            if hasattr(self.interface, 'sendHeartbeat'):
-                self.interface.sendHeartbeat()
-                self.last_heartbeat = time.time()
-                
-            return True
+            # Try to get basic device info to ensure connection is working
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    # Try to access localNode
+                    if hasattr(self.interface, 'localNode') and self.interface.localNode:
+                        logger.info("Connection validated successfully")
+                        return True
+                        
+                    # If localNode not available, try to get my user
+                    if hasattr(self.interface, 'getMyUser'):
+                        user = self.interface.getMyUser()
+                        if user:
+                            logger.info("Connection validated via user info")
+                            return True
+                            
+                except Exception as e:
+                    logger.debug(f"Validation attempt {attempt + 1} failed: {e}")
+                    if attempt < max_retries - 1:
+                        time.sleep(1.0)  # Wait between retries
+                    
+            return False
             
         except Exception as e:
             logger.error(f"Connection validation failed: {e}")
@@ -256,32 +273,128 @@ class MeshtasticInterface:
             device_info = {}
             
             # Get local node info
+            local_node = None
             if hasattr(self.interface, 'localNode'):
                 local_node = self.interface.localNode
-                if local_node:
-                    device_info['local_node'] = local_node
                     
             # Get user info
+            user = None
             if hasattr(self.interface, 'getMyUser'):
-                user = self.interface.getMyUser()
-                if user:
-                    device_info['user'] = user
+                try:
+                    user = self.interface.getMyUser()
+                except Exception as e:
+                    logger.debug(f"Could not get user info: {e}")
                     
             # Get node info
+            node_info = None
             if hasattr(self.interface, 'getMyNodeInfo'):
-                node_info = self.interface.getMyNodeInfo()
-                if node_info:
-                    device_info['node_info'] = node_info
+                try:
+                    node_info = self.interface.getMyNodeInfo()
+                except Exception as e:
+                    logger.debug(f"Could not get node info: {e}")
                     
-            # Get channel settings
+            # Get channel settings - try primary channel first
+            channel_settings = None
             if hasattr(self.interface, 'getChannelSettings'):
                 try:
-                    channel_settings = self.interface.getChannelSettings()
-                    if channel_settings:
-                        device_info['channel_settings'] = channel_settings
+                    # Try to get primary channel (index 0)
+                    channel_settings = self.interface.getChannelSettings(0)
                 except Exception as e:
-                    logger.debug(f"Could not get channel settings: {e}")
+                    logger.debug(f"Could not get channel settings with index 0: {e}")
+                    try:
+                        # Fallback to default getChannelSettings
+                        channel_settings = self.interface.getChannelSettings()
+                    except Exception as e2:
+                        logger.debug(f"Could not get channel settings: {e2}")
+            
+            # Helper function to safely get value from object or dict
+            def safe_get(obj, key, default=None):
+                if obj is None:
+                    return default
+                if hasattr(obj, key):
+                    return getattr(obj, key)
+                elif isinstance(obj, dict) and key in obj:
+                    return obj[key]
+                return default
+            
+            # Extract and format device information
+            # Long name (from user info)
+            long_name = safe_get(user, 'longName', 'Unknown')
+            device_info['long_name'] = long_name if long_name else 'Unknown'
+                
+            # Short name (from user info)
+            short_name = safe_get(user, 'shortName', 'UNK')
+            device_info['short_name'] = short_name if short_name else 'UNK'
+                
+            # Hardware model (from node info device metadata)
+            hardware = None
+            if node_info:
+                device_metadata = safe_get(node_info, 'deviceMetrics', {})
+                if device_metadata:
+                    hardware = safe_get(device_metadata, 'hwModel')
                     
+            # Also try from user info
+            if not hardware and user:
+                hardware = safe_get(user, 'hwModel')
+                    
+            # Try from local node
+            if not hardware and local_node:
+                hardware = safe_get(local_node, 'hwModel')
+                    
+            device_info['hardware'] = hardware if hardware else 'Unknown'
+                    
+            # Firmware version (from node info)
+            firmware = None
+            if node_info:
+                firmware = safe_get(node_info, 'firmwareVersion')
+                    
+            # Try from local node
+            if not firmware and local_node:
+                firmware = safe_get(local_node, 'firmwareVersion')
+                    
+            device_info['firmware'] = firmware if firmware else 'Unknown'
+                    
+            # Region (from local node config)
+            region = None
+            if local_node and hasattr(local_node, 'localConfig'):
+                try:
+                    config = local_node.localConfig
+                    if config and hasattr(config, 'lora') and hasattr(config.lora, 'region'):
+                        region_num = config.lora.region
+                        # Map region enum values back to names
+                        region = REGION_ENUM_TO_NAME.get(region_num, f"Unknown ({region_num})")
+                except Exception as e:
+                    logger.debug(f"Could not get region from local config: {e}")
+                    
+            device_info['region'] = region if region else 'Unknown'
+                    
+            # Channel name (from channel settings)
+            channel_name = 'Default'
+            if channel_settings:
+                channel_name = safe_get(channel_settings, 'name', 'Default')
+                
+            device_info['channel'] = channel_name if channel_name else 'Default'
+                
+            # Battery level (from node info)
+            battery = None
+            if node_info:
+                node_id = safe_get(node_info, 'num')
+                if node_id and node_id in self.nodes:
+                    node = self.nodes[node_id]
+                    device_metrics = safe_get(node, 'deviceMetrics')
+                    if device_metrics:
+                        battery = safe_get(device_metrics, 'batteryLevel')
+                        
+            if battery is not None:
+                device_info['battery'] = battery
+                        
+            # Debug logging to understand what we're getting
+            logger.debug(f"User info: {user}")
+            logger.debug(f"Node info: {node_info}")
+            logger.debug(f"Local node: {local_node}")
+            logger.debug(f"Channel settings: {channel_settings}")
+            
+            logger.info(f"Device info retrieved: {device_info}")
             return device_info
             
         except Exception as e:
@@ -316,6 +429,52 @@ class MeshtasticInterface:
             
         return None
         
+    def get_gps_status(self):
+        """Get detailed GPS status information"""
+        if not self.interface or not self.connection_validated:
+            return {'status': 'disconnected', 'satellites': 0, 'fix': False}
+            
+        try:
+            if hasattr(self.interface, 'getMyNodeInfo'):
+                node_info = self.interface.getMyNodeInfo()
+                if node_info and 'position' in node_info:
+                    pos = node_info['position']
+                    
+                    # Check if we have valid coordinates
+                    has_coords = ('latitude' in pos and 'longitude' in pos and 
+                                pos['latitude'] != 0 and pos['longitude'] != 0)
+                    
+                    # Get satellite count if available
+                    satellites = pos.get('satsInView', 0)
+                    
+                    # Get GPS time if available (indicates recent fix)
+                    gps_time = pos.get('time', 0)
+                    
+                    # Determine GPS status
+                    if has_coords and satellites > 3:
+                        status = 'fixed'
+                    elif satellites > 0:
+                        status = 'searching'
+                    else:
+                        status = 'no_signal'
+                    
+                    return {
+                        'status': status,
+                        'satellites': satellites,
+                        'fix': has_coords,
+                        'latitude': pos.get('latitude', 0),
+                        'longitude': pos.get('longitude', 0),
+                        'altitude': pos.get('altitude', 0),
+                        'time': gps_time
+                    }
+            
+            # If we can't get position info, assume GPS might be disabled
+            return {'status': 'disabled', 'satellites': 0, 'fix': False}
+                        
+        except Exception as e:
+            logger.debug(f"Could not get GPS status: {e}")
+            return {'status': 'error', 'satellites': 0, 'fix': False}
+        
     def update_node_info(self, long_name, short_name):
         """Update node information"""
         if not self.interface or not self.connection_validated:
@@ -346,7 +505,7 @@ class MeshtasticInterface:
             raise Exception("Interface not properly initialized")
             
         if region_name not in REGION_NAME_TO_ENUM:
-            raise Exception(f"Unsupported region: {region_name}")
+            raise Exception(f"Unsupported region: {region_name}. Available regions: {list(REGION_NAME_TO_ENUM.keys())}")
             
         try:
             local_node = self.interface.localNode
@@ -354,9 +513,16 @@ class MeshtasticInterface:
                 config = local_node.localConfig
                 
                 if hasattr(config, 'lora') and hasattr(config.lora, 'region'):
+                    old_region = config.lora.region
                     config.lora.region = REGION_NAME_TO_ENUM[region_name]
+                    
+                    # Write config and wait for it to be applied
                     local_node.writeConfig("lora")
-                    logger.info(f"Region updated to {region_name}")
+                    
+                    # Allow time for the configuration to be applied
+                    time.sleep(2)
+                    
+                    logger.info(f"Region updated from {old_region} to {region_name} (enum: {REGION_NAME_TO_ENUM[region_name]})")
                     return True
                 else:
                     raise Exception("Unable to access LoRa configuration")
@@ -408,6 +574,96 @@ class MeshtasticInterface:
         except Exception as e:
             logger.error(f"Error factory resetting device: {e}")
             raise
+            
+    def set_gps_enabled(self, enabled):
+        """Enable or disable GPS"""
+        if not self.interface or not self.connection_validated:
+            raise Exception("Not connected to device")
+            
+        try:
+            local_node = self.interface.localNode
+            if local_node and hasattr(local_node, 'localConfig'):
+                config = local_node.localConfig
+                
+                if hasattr(config, 'position') and hasattr(config.position, 'gps_enabled'):
+                    config.position.gps_enabled = enabled
+                    local_node.writeConfig("position")
+                    logger.info(f"GPS {'enabled' if enabled else 'disabled'}")
+                    return True
+                else:
+                    # Fallback: try alternative method
+                    if hasattr(local_node, 'setConfig'):
+                        local_node.setConfig(f"position.gps_enabled={enabled}")
+                        logger.info(f"GPS {'enabled' if enabled else 'disabled'} (fallback method)")
+                        return True
+                    else:
+                        raise Exception("Unable to access position configuration")
+            else:
+                raise Exception("Local node configuration not available")
+                
+        except Exception as e:
+            logger.error(f"Error setting GPS enabled status: {e}")
+            return False
+            
+    def set_gps_interval(self, interval):
+        """Set GPS update interval in seconds"""
+        if not self.interface or not self.connection_validated:
+            raise Exception("Not connected to device")
+            
+        try:
+            local_node = self.interface.localNode
+            if local_node and hasattr(local_node, 'localConfig'):
+                config = local_node.localConfig
+                
+                if hasattr(config, 'position') and hasattr(config.position, 'gps_update_interval'):
+                    config.position.gps_update_interval = interval
+                    local_node.writeConfig("position")
+                    logger.info(f"GPS update interval set to {interval} seconds")
+                    return True
+                else:
+                    # Fallback: try alternative method
+                    if hasattr(local_node, 'setConfig'):
+                        local_node.setConfig(f"position.gps_update_interval={interval}")
+                        logger.info(f"GPS update interval set to {interval} seconds (fallback method)")
+                        return True
+                    else:
+                        raise Exception("Unable to access position configuration")
+            else:
+                raise Exception("Local node configuration not available")
+                
+        except Exception as e:
+            logger.error(f"Error setting GPS update interval: {e}")
+            return False
+            
+    def set_gps_broadcast_interval(self, interval):
+        """Set GPS broadcast interval in seconds"""
+        if not self.interface or not self.connection_validated:
+            raise Exception("Not connected to device")
+            
+        try:
+            local_node = self.interface.localNode
+            if local_node and hasattr(local_node, 'localConfig'):
+                config = local_node.localConfig
+                
+                if hasattr(config, 'position') and hasattr(config.position, 'position_broadcast_secs'):
+                    config.position.position_broadcast_secs = interval
+                    local_node.writeConfig("position")
+                    logger.info(f"GPS broadcast interval set to {interval} seconds")
+                    return True
+                else:
+                    # Fallback: try alternative method
+                    if hasattr(local_node, 'setConfig'):
+                        local_node.setConfig(f"position.position_broadcast_secs={interval}")
+                        logger.info(f"GPS broadcast interval set to {interval} seconds (fallback method)")
+                        return True
+                    else:
+                        raise Exception("Unable to access position configuration")
+            else:
+                raise Exception("Local node configuration not available")
+                
+        except Exception as e:
+            logger.error(f"Error setting GPS broadcast interval: {e}")
+            return False
             
     # Event handlers
     def on_receive_message(self, packet, interface):

@@ -1,6 +1,58 @@
-# Meshtastic UI - Modular Architecture
+# MeshPy UI - Cross-Platform Meshtastic Interface
 
-A comprehensive, modular interface for Meshtastic mesh networking devices with advanced features including real-time chat, network topology visualization, analytics, emergency features, and device configuration.
+A comprehensive, cross-platform interface for Meshtastic mesh networking devices with advanced features including real-time chat, network topology visualization, analytics, emergency features, and device configuration.
+
+## 🚀 Quick Start
+
+### One-Command Setup (All Platforms)
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-username/meshpy-ui.git
+   cd meshpy-ui
+   ```
+
+2. **Run the setup script**:
+   ```bash
+   python setup.py
+   ```
+
+3. **Launch the application**:
+   - **Windows**: Double-click `run.bat` or run `run.bat` from command line
+   - **macOS/Linux**: Run `./run.sh` from terminal
+
+That's it! The setup script automatically:
+- ✅ Detects your operating system
+- ✅ Creates a virtual environment
+- ✅ Installs all required dependencies
+- ✅ Creates platform-specific run scripts
+- ✅ Sets up the database directory
+
+### Manual Setup (If Needed)
+
+If you prefer manual setup:
+
+**Windows:**
+```cmd
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+**macOS/Linux:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+## 📋 Requirements
+
+- **Python 3.8 or higher**
+- **USB drivers** for your Meshtastic device (if using serial connection)
+- **Internet connection** (for map tiles and initial setup)
 
 ## Features
 

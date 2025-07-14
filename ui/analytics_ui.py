@@ -282,9 +282,23 @@ class AnalyticsUI:
                 self.msg_activity_ax.set_ylabel('Messages per Hour')
                 self.msg_activity_ax.grid(True, alpha=0.3)
                 
-                # Format x-axis
-                self.msg_activity_ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-                self.msg_activity_ax.xaxis.set_major_locator(mdates.HourLocator(interval=max(1, hours//12)))
+                # Format x-axis based on time range
+                if hours <= 6:
+                    # For short periods, show hours and minutes
+                    self.msg_activity_ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+                    self.msg_activity_ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
+                elif hours <= 24:
+                    # For 1 day, show hours
+                    self.msg_activity_ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+                    self.msg_activity_ax.xaxis.set_major_locator(mdates.HourLocator(interval=4))
+                elif hours <= 168:  # 7 days
+                    # For a week, show days
+                    self.msg_activity_ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                    self.msg_activity_ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+                else:  # 30 days
+                    # For a month, show dates with fewer ticks
+                    self.msg_activity_ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                    self.msg_activity_ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
                 
                 self.msg_activity_figure.autofmt_xdate()
             else:
@@ -353,9 +367,23 @@ class AnalyticsUI:
                 self.battery_trends_ax.grid(True, alpha=0.3)
                 self.battery_trends_ax.legend()
                 
-                # Format x-axis
-                self.battery_trends_ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-                self.battery_trends_ax.xaxis.set_major_locator(mdates.HourLocator(interval=max(1, hours//12)))
+                # Format x-axis based on time range
+                if hours <= 6:
+                    # For short periods, show hours and minutes
+                    self.battery_trends_ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+                    self.battery_trends_ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
+                elif hours <= 24:
+                    # For 1 day, show hours
+                    self.battery_trends_ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+                    self.battery_trends_ax.xaxis.set_major_locator(mdates.HourLocator(interval=4))
+                elif hours <= 168:  # 7 days
+                    # For a week, show days
+                    self.battery_trends_ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                    self.battery_trends_ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+                else:  # 30 days
+                    # For a month, show dates with fewer ticks
+                    self.battery_trends_ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+                    self.battery_trends_ax.xaxis.set_major_locator(mdates.DayLocator(interval=5))
                 
                 self.battery_trends_figure.autofmt_xdate()
             else:
@@ -384,7 +412,9 @@ class AnalyticsUI:
             
             if nodes:
                 # Count nodes by status
-                active_nodes = len([n for n in nodes.values() if n.get('lastHeard', 0) > time.time() - 3600])
+                current_time = time.time()
+                active_nodes = len([n for n in nodes.values() 
+                                  if n.get('lastHeard', 0) and n.get('lastHeard', 0) > current_time - 3600])
                 inactive_nodes = len(nodes) - active_nodes
                 
                 # Node status pie chart

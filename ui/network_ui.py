@@ -190,14 +190,16 @@ class NetworkUI:
                     last_heard = node.get('lastHeard', 'N/A')
                     
                     # Determine node color based on battery level
-                    if battery == 'N/A':
+                    if battery == 'N/A' or battery is None:
                         color = 'gray'
-                    elif battery > 75:
+                    elif isinstance(battery, (int, float)) and battery > 75:
                         color = 'green'
-                    elif battery > 25:
+                    elif isinstance(battery, (int, float)) and battery > 25:
                         color = 'orange'
-                    else:
+                    elif isinstance(battery, (int, float)):
                         color = 'red'
+                    else:
+                        color = 'gray'
                     
                     # Calculate position (arrange in circle around local node)
                     angle = (hash(str(node_id)) % 360) * (math.pi / 180)
@@ -213,7 +215,7 @@ class NetworkUI:
                         'size': 15,
                         'is_local': False,
                         'battery': f"{battery}%" if battery != 'N/A' else 'N/A',
-                        'last_seen': datetime.fromtimestamp(last_heard).strftime("%H:%M:%S") if last_heard != 'N/A' else 'N/A'
+                        'last_seen': datetime.fromtimestamp(last_heard).strftime("%H:%M:%S") if last_heard != 'N/A' and last_heard is not None and isinstance(last_heard, (int, float)) else 'N/A'
                     }
                     
                     # Add connection from local to remote node

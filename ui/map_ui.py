@@ -268,7 +268,12 @@ class MapUI:
             # Store current position and zoom to maintain view
             try:
                 current_position = self.map_widget.get_position()
-                current_zoom = self.map_widget.get_zoom()
+                # Try different zoom methods - get_zoom() may not exist in this version
+                try:
+                    current_zoom = self.map_widget.get_zoom()
+                except AttributeError:
+                    # Fallback: use zoom property or default zoom
+                    current_zoom = getattr(self.map_widget, 'zoom', 10)
                 
                 # Small delay to let tiles load, then restore position
                 self.parent.after(100, lambda: self.restore_map_view(current_position, current_zoom))
@@ -291,7 +296,12 @@ class MapUI:
             try:
                 # Store current state
                 current_position = self.map_widget.get_position()
-                current_zoom = self.map_widget.get_zoom()
+                # Try different zoom methods - get_zoom() may not exist in this version
+                try:
+                    current_zoom = self.map_widget.get_zoom()
+                except AttributeError:
+                    # Fallback: use zoom property or default zoom
+                    current_zoom = getattr(self.map_widget, 'zoom', 10)
                 
                 # Reapply layer
                 self.apply_map_layer()
