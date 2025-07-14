@@ -1,0 +1,19 @@
+meshtastic>=2.6.0
+# The meshtastic library already includes all necessary dependencies:
+# - bleak (for Bluetooth LE interface)
+# - pypubsub (for publish-subscribe messaging)
+# - pyserial (for serial interface)
+# - protobuf (for protocol buffers)
+# - pyyaml (for YAML configuration)
+# - requests (for HTTP requests)
+# - tabulate (for table formatting)
+# - packaging (for version handling)
+
+# Standard library modules used (no installation needed):
+# - tkinter (GUI framework)
+# - threading (concurrent processing)
+# - queue (thread-safe communication)
+# - json (JSON handling)
+# - datetime (date/time handling)
+# - logging (logging functionality)
+# - time (time utilities) 
