@@ -39,6 +39,30 @@ except ImportError as e:
     MAPVIEW_AVAILABLE = False
 
 class MeshtasticUI:
+    # Region mapping constants - Meshtastic LoRa region enum values
+    REGION_NAME_TO_ENUM = {
+        "ANZ": 7,       # Australia/New Zealand
+        "CN": 8,        # China
+        "EU_433": 2,    # Europe 433MHz
+        "EU_868": 3,    # Europe 868MHz
+        "IN": 9,        # India
+        "JP": 10,       # Japan
+        "KR": 11,       # Korea
+        "MY_433": 12,   # Malaysia 433MHz
+        "MY_919": 13,   # Malaysia 919MHz
+        "NZ_865": 14,   # New Zealand 865MHz
+        "RU": 15,       # Russia
+        "SG_923": 16,   # Singapore
+        "TH": 17,       # Thailand
+        "TW": 18,       # Taiwan
+        "UA_433": 19,   # Ukraine 433MHz
+        "UA_868": 20,   # Ukraine 868MHz
+        "US": 1         # United States
+    }
+    
+    # Reverse mapping for reading current region from device
+    REGION_ENUM_TO_NAME = {v: k for k, v in REGION_NAME_TO_ENUM.items()}
+    
     def __init__(self, root):
         self.root = root
         self.root.title("Meshtastic UI")
@@ -450,26 +474,8 @@ class MeshtasticUI:
         ttk.Label(region_frame, text="Region:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.region_var = tk.StringVar()
         
-        # List of supported regions
-        self.regions = [
-            "ANZ",      # Australia/New Zealand
-            "CN",       # China
-            "EU_433",   # Europe 433MHz
-            "EU_868",   # Europe 868MHz
-            "IN",       # India
-            "JP",       # Japan
-            "KR",       # Korea
-            "MY_433",   # Malaysia 433MHz
-            "MY_919",   # Malaysia 919MHz
-            "NZ_865",   # New Zealand 865MHz
-            "RU",       # Russia
-            "SG_923",   # Singapore
-            "TH",       # Thailand
-            "TW",       # Taiwan
-            "UA_433",   # Ukraine 433MHz
-            "UA_868",   # Ukraine 868MHz
-            "US"        # United States
-        ]
+        # List of supported regions (from class constant)
+        self.regions = list(self.REGION_NAME_TO_ENUM.keys())
         
         region_combo = ttk.Combobox(region_frame, textvariable=self.region_var, 
                                    values=self.regions, state="readonly", width=10)
@@ -1236,29 +1242,9 @@ class MeshtasticUI:
                 if hasattr(local_node, 'localConfig'):
                     config = local_node.localConfig
                     if hasattr(config, 'lora') and hasattr(config.lora, 'region'):
-                        # Map region enum values back to names
-                        region_map = {
-                            1: "US",        # US
-                            2: "EU_433",    # EU_433
-                            3: "EU_868",    # EU_868
-                            7: "ANZ",       # ANZ
-                            8: "CN",        # CN
-                            9: "IN",        # IN
-                            10: "JP",       # JP
-                            11: "KR",       # KR
-                            12: "MY_433",   # MY_433
-                            13: "MY_919",   # MY_919
-                            14: "NZ_865",   # NZ_865
-                            15: "RU",       # RU
-                            16: "SG_923",   # SG_923
-                            17: "TH",       # TH
-                            18: "TW",       # TW
-                            19: "UA_433",   # UA_433
-                            20: "UA_868",   # UA_868
-                        }
-                        
+                        # Map region enum values back to names using class constant
                         region_num = config.lora.region
-                        region_name = region_map.get(region_num, f"Unknown ({region_num})")
+                        region_name = self.REGION_ENUM_TO_NAME.get(region_num, f"Unknown ({region_num})")
                         self.device_info_labels["Region"].config(text=region_name)
                         
                         # Update the region dropdown selection
@@ -1339,29 +1325,9 @@ class MeshtasticUI:
                 # Update the region in the config
                 # The region is stored in the LoRa config
                 if hasattr(config, 'lora') and hasattr(config.lora, 'region'):
-                    # Map our region names to the protobuf enum values
-                    region_map = {
-                        "ANZ": 7,       # ANZ
-                        "CN": 8,        # CN
-                        "EU_433": 2,    # EU_433
-                        "EU_868": 3,    # EU_868
-                        "IN": 9,        # IN
-                        "JP": 10,       # JP
-                        "KR": 11,       # KR
-                        "MY_433": 12,   # MY_433
-                        "MY_919": 13,   # MY_919
-                        "NZ_865": 14,   # NZ_865
-                        "RU": 15,       # RU
-                        "SG_923": 16,   # SG_923
-                        "TH": 17,       # TH
-                        "TW": 18,       # TW
-                        "UA_433": 19,   # UA_433
-                        "UA_868": 20,   # UA_868
-                        "US": 1         # US
-                    }
-                    
-                    if selected_region in region_map:
-                        config.lora.region = region_map[selected_region]
+                    # Map region names to enum values using class constant
+                    if selected_region in self.REGION_NAME_TO_ENUM:
+                        config.lora.region = self.REGION_NAME_TO_ENUM[selected_region]
                         
                         # Write the config back to the device
                         local_node.writeConfig("lora")
