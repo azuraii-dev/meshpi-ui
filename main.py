@@ -365,11 +365,17 @@ class MeshtasticUI:
                             raise Exception("No Meshtastic devices found on serial ports.\n\nPlease check:\n• Device is connected via USB\n• Device is powered on\n• USB cable supports data transfer\n• Device drivers are installed")
                         self.interface = meshtastic.serial_interface.SerialInterface()
                     else:
-                        self.interface = meshtastic.serial_interface.SerialInterface(devPath=param)
+                        try:
+                            self.interface = meshtastic.serial_interface.SerialInterface(devPath=param)
+                        except Exception as serial_error:
+                            raise Exception(f"Failed to connect to serial device '{param}'.\n\nPlease check:\n• Device path is correct\n• Device is connected and powered on\n• You have permission to access the device\n• Device is not in use by another application\n\nOriginal error: {serial_error}")
                 elif conn_type == "TCP":
                     if param.lower() == "auto":
                         param = "localhost"
-                    self.interface = meshtastic.tcp_interface.TCPInterface(hostname=param)
+                    try:
+                        self.interface = meshtastic.tcp_interface.TCPInterface(hostname=param)
+                    except Exception as tcp_error:
+                        raise Exception(f"Failed to connect to TCP host '{param}'.\n\nPlease check:\n• Host is reachable\n• Port 4403 is open\n• Meshtastic device has network module enabled\n• IP address/hostname is correct\n\nOriginal error: {tcp_error}")
                 
                 # Validate the connection by checking if we can access basic properties
                 if not self.validate_connection():
