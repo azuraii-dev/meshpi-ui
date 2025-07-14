@@ -80,6 +80,8 @@ class MeshtasticUI:
         self.map_markers = {}
         self.use_real_map = False
         self.internet_available = False
+        self.map_layer_var = tk.StringVar(value="OpenStreetMap")
+        self.map_layers = {}
         
         # Setup UI
         self.create_widgets()
@@ -252,7 +254,10 @@ class MeshtasticUI:
         self.map_viz_frame = ttk.LabelFrame(map_content, text="Map Visualization", padding="10")
         self.map_viz_frame.grid(row=0, column=1, rowspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
         self.map_viz_frame.columnconfigure(0, weight=1)
-        self.map_viz_frame.rowconfigure(0, weight=1)
+        self.map_viz_frame.rowconfigure(1, weight=1)
+        
+        # Map layer selection
+        self.create_map_layer_controls()
         
         # Initialize map after a short delay to allow connectivity check to complete
         self.root.after(1000, self.initialize_map)
@@ -284,8 +289,8 @@ class MeshtasticUI:
             corner_radius=0
         )
         
-        # Configure tile caching for offline use
-        self.map_widget.set_tile_server("https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", max_zoom=19)
+        # Configure initial tile server
+        self.apply_map_layer()
         
         # Set initial position based on available location data
         initial_position = self.get_initial_map_position()
@@ -302,17 +307,182 @@ class MeshtasticUI:
             self.map_widget.set_position(37.7749, -122.4194)
             self.map_widget.set_zoom(10)
         
-        self.map_widget.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.map_widget.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # Update frame title  
-        self.map_viz_frame.config(text="Map Visualization (OpenStreetMap - Online Only)")
+        # Update frame title with current layer
+        self.update_map_frame_title()
+        
+    def create_map_layer_controls(self):
+        """Create map layer selection controls"""
+        layer_frame = ttk.Frame(self.map_viz_frame)
+        layer_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        layer_frame.columnconfigure(1, weight=1)
+        
+        # Map layer selection
+        ttk.Label(layer_frame, text="Map Layer:").grid(row=0, column=0, padx=(0, 10))
+        
+        self.map_layer_var = tk.StringVar(value="OpenStreetMap")
+        
+                 # Define available map layers
+        self.map_layers = {
+            "OpenStreetMap": {
+                "url": "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "max_zoom": 19,
+                "attribution": "© OpenStreetMap contributors"
+            },
+            "📡 Satellite (Esri)": {
+                "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                "max_zoom": 19,
+                "attribution": "© Esri, Maxar, Earthstar Geographics"
+            },
+            "🌍 Satellite (Google)": {
+                "url": "http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
+                "max_zoom": 20,
+                "attribution": "© Google"
+            },
+            "🗺️ Hybrid (Google)": {
+                "url": "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
+                "max_zoom": 20,
+                "attribution": "© Google"
+            },
+            "⛰️ Terrain": {
+                "url": "https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png",
+                "max_zoom": 18,
+                "attribution": "© Stamen Design, © OpenStreetMap contributors"
+            },
+            "🏞️ Topo (OpenTopo)": {
+                "url": "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
+                "max_zoom": 17,
+                "attribution": "© OpenTopoMap, © OpenStreetMap contributors"
+            },
+            "☀️ Light Theme": {
+                "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
+                "max_zoom": 19,
+                "attribution": "© CartoDB, © OpenStreetMap contributors"
+            },
+            "🌙 Dark Theme": {
+                "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
+                "max_zoom": 19,
+                "attribution": "© CartoDB, © OpenStreetMap contributors"
+            }
+        }
+        
+        layer_combo = ttk.Combobox(layer_frame, textvariable=self.map_layer_var, 
+                                  values=list(self.map_layers.keys()), state="readonly", width=25)
+        layer_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        layer_combo.bind('<<ComboboxSelected>>', self.on_layer_changed)
+        
+        # Refresh button
+        ttk.Button(layer_frame, text="🔄", command=self.refresh_map, width=3).grid(row=0, column=2)
+        
+    def apply_map_layer(self):
+        """Apply the selected map layer to the map widget"""
+        if not self.map_widget or not hasattr(self, 'map_layers') or not self.map_layers:
+            return
+            
+        try:
+            selected_layer = self.map_layer_var.get()
+            if selected_layer not in self.map_layers:
+                logger.warning(f"Selected layer '{selected_layer}' not found in map_layers")
+                return
+                
+            layer_config = self.map_layers[selected_layer]
+            
+            # Set the tile server
+            self.map_widget.set_tile_server(
+                layer_config["url"], 
+                max_zoom=layer_config["max_zoom"]
+            )
+            
+            logger.info(f"Applied map layer: {selected_layer}")
+            
+        except Exception as e:
+            logger.error(f"Error applying map layer: {e}")
+            # Fall back to OpenStreetMap
+            try:
+                self.map_widget.set_tile_server(
+                    "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", 
+                    max_zoom=19
+                )
+            except Exception as fallback_error:
+                logger.error(f"Error applying fallback layer: {fallback_error}")
+            
+    def on_layer_changed(self, event=None):
+        """Handle map layer selection change"""
+        if hasattr(self, 'map_widget') and self.map_widget:
+            self.apply_map_layer()
+            self.update_map_frame_title()
+            
+            # Store current position and zoom to maintain view
+            try:
+                current_position = self.map_widget.get_position()
+                current_zoom = self.map_widget.get_zoom()
+                
+                # Small delay to let tiles load, then restore position
+                self.root.after(100, lambda: self.restore_map_view(current_position, current_zoom))
+                
+            except Exception as e:
+                logger.debug(f"Could not preserve map view: {e}")
+                
+    def restore_map_view(self, position, zoom):
+        """Restore map position and zoom after layer change"""
+        try:
+            if position and zoom:
+                self.map_widget.set_position(position[0], position[1])
+                self.map_widget.set_zoom(zoom)
+        except Exception as e:
+            logger.debug(f"Could not restore map view: {e}")
+            
+    def refresh_map(self):
+        """Refresh the current map"""
+        if hasattr(self, 'map_widget') and self.map_widget:
+            try:
+                # Store current state
+                current_position = self.map_widget.get_position()
+                current_zoom = self.map_widget.get_zoom()
+                
+                # Reapply layer
+                self.apply_map_layer()
+                
+                # Restore state
+                self.restore_map_view(current_position, current_zoom)
+                
+                # Update nodes
+                self.update_map_nodes()
+                
+                logger.info("Map refreshed")
+                
+            except Exception as e:
+                logger.error(f"Error refreshing map: {e}")
+                
+    def update_map_frame_title(self):
+        """Update the map frame title with current layer info"""
+        try:
+            if self.use_real_map:
+                selected_layer = self.map_layer_var.get()
+                if selected_layer:
+                    title = f"Map Visualization ({selected_layer} - Online)"
+                else:
+                    title = "Map Visualization (Online)"
+            else:
+                title = "Map Visualization (Coordinate Plot"
+                if not self.internet_available:
+                    title += " - Offline"
+                elif not MAPVIEW_AVAILABLE:
+                    title += " - Map library unavailable"
+                title += ")"
+            
+            self.map_viz_frame.config(text=title)
+            
+        except Exception as e:
+            logger.debug(f"Could not update map frame title: {e}")
         
     def create_coordinate_plot(self):
         """Create simple coordinate plot as fallback"""
         logger.info("Creating coordinate plot fallback")
         
         self.coordinate_canvas = tk.Canvas(self.map_viz_frame, bg="lightgray", width=400, height=400)
-        self.coordinate_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.coordinate_canvas.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Add grid lines
         self.draw_coordinate_grid()
@@ -322,13 +492,7 @@ class MeshtasticUI:
                                          justify=tk.CENTER, font=("Arial", 10), fill="darkblue")
         
         # Update frame title
-        title = "Map Visualization (Coordinate Plot"
-        if not self.internet_available:
-            title += " - Offline"
-        elif not MAPVIEW_AVAILABLE:
-            title += " - Map library unavailable"
-        title += ")"
-        self.map_viz_frame.config(text=title)
+        self.update_map_frame_title()
         
     def draw_coordinate_grid(self):
         """Draw grid lines on coordinate plot"""
