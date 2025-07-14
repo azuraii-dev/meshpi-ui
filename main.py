@@ -115,26 +115,28 @@ class MeshtasticApp:
         # Create tab frames
         map_frame = ttk.Frame(self.notebook)
         chat_frame = ttk.Frame(self.notebook)
-        network_frame = ttk.Frame(self.notebook)
-        analytics_frame = ttk.Frame(self.notebook)
+        #network_frame = ttk.Frame(self.notebook)
+        #analytics_frame = ttk.Frame(self.notebook)
         emergency_frame = ttk.Frame(self.notebook)
         config_frame = ttk.Frame(self.notebook)
         
         # Add tabs to notebook
         self.notebook.add(map_frame, text="Map")
         self.notebook.add(chat_frame, text="Chat")
-        self.notebook.add(network_frame, text="Network")
-        self.notebook.add(analytics_frame, text="Analytics")
+        #self.notebook.add(network_frame, text="Network")
+        #self.notebook.add(analytics_frame, text="Analytics")
         self.notebook.add(emergency_frame, text="Emergency")
         self.notebook.add(config_frame, text="Config")
         
         # Initialize UI modules with the correct parent frames
         self.map_ui = MapUI(map_frame, self.interface_manager, self.data_logger)
         self.chat_ui = ChatUI(chat_frame, self.interface_manager, self.data_logger)
-        self.network_ui = NetworkUI(network_frame, self.interface_manager, self.data_logger)
-        self.analytics_ui = AnalyticsUI(analytics_frame, self.interface_manager, self.data_logger)
         self.emergency_ui = EmergencyUI(emergency_frame, self.interface_manager, self.data_logger)
         self.config_ui = ConfigUI(config_frame, self.interface_manager, self.data_logger)
+        
+        # Set disabled UI components to None for proper handling
+        self.network_ui = None
+        self.analytics_ui = None
         
     def create_status_bar(self, parent):
         """Create status bar"""
@@ -223,7 +225,7 @@ class MeshtasticApp:
             if hasattr(self.map_ui, 'update_nodes_display'):
                 self.map_ui.update_nodes_display(nodes)
                 
-            if hasattr(self.network_ui, 'update_nodes'):
+            if self.network_ui and hasattr(self.network_ui, 'update_nodes'):
                 self.network_ui.update_nodes(nodes)
                 
             if hasattr(self.chat_ui, 'update_destinations'):
@@ -315,7 +317,7 @@ class MeshtasticApp:
         # Clear node data in UI components
         if hasattr(self.map_ui, 'update_nodes_display'):
             self.map_ui.update_nodes_display({})
-        if hasattr(self.network_ui, 'update_nodes'):
+        if self.network_ui and hasattr(self.network_ui, 'update_nodes'):
             self.network_ui.update_nodes({})
         if hasattr(self.chat_ui, 'update_destinations'):
             self.chat_ui.update_destinations({})
@@ -375,12 +377,12 @@ class MeshtasticApp:
                     
                     # Update analytics data less frequently (every 3rd update = 30 seconds)
                     if self.update_counter % 3 == 0:
-                        if hasattr(self.analytics_ui, 'update_data'):
+                        if self.analytics_ui and hasattr(self.analytics_ui, 'update_data'):
                             self.analytics_ui.update_data(nodes)
                     
                     # Update network topology less frequently (every 2nd update = 20 seconds)
                     if self.update_counter % 2 == 0:
-                        if hasattr(self.network_ui, 'refresh_network_topology'):
+                        if self.network_ui and hasattr(self.network_ui, 'refresh_network_topology'):
                             self.network_ui.refresh_network_topology(nodes)
                     
                     self.update_counter += 1

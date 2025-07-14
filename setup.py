@@ -61,7 +61,22 @@ def create_venv(platform_type):
     # Remove existing venv if it exists
     if os.path.exists(venv_name):
         print(f"Removing existing {venv_name} directory...")
-        shutil.rmtree(venv_name)
+        try:
+            if platform_type == "windows":
+                # On Windows, try to handle locked files
+                import stat
+                def handle_remove_readonly(func, path, exc):
+                    os.chmod(path, stat.S_IWRITE)
+                    func(path)
+                shutil.rmtree(venv_name, onerror=handle_remove_readonly)
+            else:
+                shutil.rmtree(venv_name)
+        except Exception as e:
+            print(f"Warning: Could not remove existing venv directory: {e}")
+            print("This might happen if the virtual environment is currently active.")
+            print("Please deactivate any active virtual environments and try again.")
+            print("Or manually delete the 'venv' directory and run this script again.")
+            return False
     
     # Create new virtual environment
     print("Creating virtual environment...")
