@@ -5,9 +5,12 @@ A comprehensive Python GUI application for interfacing with Meshtastic mesh netw
 ## Features
 
 ### 🗺️ Map Section
-- **Node Visualization**: View all nodes in the mesh network
-- **Node Details**: Display node information including name, ID, distance, battery level, and last heard timestamp
-- **Interactive Map**: Placeholder for future map integration showing node positions
+- **Real Map Integration**: OpenStreetMap tiles with automatic fallback to coordinate plot
+- **Offline Support**: Tile caching for off-grid operation
+- **Node Visualization**: GPS-positioned nodes with color-coded battery levels
+- **Smart Auto-zoom**: Automatically fits map view to show all nodes
+- **Distance Calculation**: Real distances between your device and other nodes
+- **Fallback Mode**: Coordinate plot when internet/map tiles unavailable
 - **Real-time Updates**: Automatic updates when nodes join or leave the network
 
 ### 💬 Chat Section
@@ -50,7 +53,9 @@ A comprehensive Python GUI application for interfacing with Meshtastic mesh netw
 
 3. **Install dependencies:**
    ```bash
-   pip install meshtastic
+   pip install -r requirements.txt
+   # Or manually:
+   pip install meshtastic tkintermapview requests
    ```
 
 4. **Run the application:**
@@ -111,6 +116,26 @@ A comprehensive Python GUI application for interfacing with Meshtastic mesh netw
    - All messages appear in the Chat tab with timestamps
    - Messages show sender, recipient, and content
 
+### Using the Map
+
+1. **Real Map Mode (Online):**
+   - Displays OpenStreetMap tiles with GPS-positioned nodes
+   - Automatic tile caching for offline use
+   - Color-coded markers: Green (>75% battery), Orange (25-75%), Red (<25%)
+   - Auto-zoom to fit all nodes in view
+
+2. **Coordinate Plot Mode (Offline):**
+   - Simple coordinate plot when internet unavailable
+   - Shows relative positions of nodes with GPS data
+   - Grid lines for reference
+   - Same color coding for battery levels
+
+3. **Map Features:**
+   - Real-time distance calculations from your device
+   - Automatic switching between online/offline modes
+   - Cached tiles remain available when offline
+   - Node markers update as devices join/leave network
+
 ## Troubleshooting
 
 ### Connection Issues
@@ -160,10 +185,12 @@ A comprehensive Python GUI application for interfacing with Meshtastic mesh netw
 
 ### Dependencies
 - `meshtastic`: Python library for Meshtastic communication
+- `tkintermapview`: Real map widget with OpenStreetMap tiles and caching
+- `requests`: HTTP library for connectivity checking
 - `tkinter`: GUI framework (standard library)
-- `pypubsub`: Event system for Meshtastic events
-- `threading`: Concurrent processing
-- `queue`: Thread-safe message passing
+- `pypubsub`: Event system for Meshtastic events (included with meshtastic)
+- `threading`: Concurrent processing (standard library)
+- `queue`: Thread-safe message passing (standard library)
 
 ## Contributing
 
@@ -187,9 +214,14 @@ For support with this application:
 
 ## Future Enhancements
 
-- **Real Map Integration**: Integration with actual mapping services
-- **GPS Tracking**: Display node positions on map
-- **Message History**: Persistent message storage
+- **Enhanced Map Features**: Terrain layers, satellite imagery, custom waypoints
+- **Route Planning**: Calculate optimal paths between nodes
+- **Mesh Network Analysis**: Visualize signal strength and network topology
+- **Bluetooth Interface**: Support for Bluetooth connections
+- **Message Encryption**: Enhanced security features
+- **Group Chat**: Multi-user conversation support
+- **File Transfer**: Send files through the mesh network
+- **Message History**: Persistent message storage and search
 - **Plugin System**: Support for custom plugins
 - **Advanced Configuration**: More device configuration options
 - **Bluetooth Support**: Direct Bluetooth connection to devices

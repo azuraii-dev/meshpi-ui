@@ -12,6 +12,9 @@ import queue
 import json
 from datetime import datetime
 import logging
+import requests
+import os
+import math
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,6 +31,13 @@ except ImportError as e:
     logger.warning(f"Meshtastic library not available: {e}")
     MESHTASTIC_AVAILABLE = False
 
+try:
+    import tkintermapview
+    MAPVIEW_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"tkintermapview not available, using coordinate plot fallback: {e}")
+    MAPVIEW_AVAILABLE = False
+
 class MeshtasticUI:
     def __init__(self, root):
         self.root = root
@@ -40,6 +50,13 @@ class MeshtasticUI:
         self.nodes = {}
         self.message_queue = queue.Queue()
         
+        # Map-related variables
+        self.map_widget = None
+        self.coordinate_canvas = None
+        self.map_markers = {}
+        self.use_real_map = False
+        self.internet_available = False
+        
         # Setup UI
         self.create_widgets()
         self.setup_meshtastic_events()
@@ -50,6 +67,54 @@ class MeshtasticUI:
         # Update status periodically
         self.update_status()
         
+        # Check internet connectivity and initialize map
+        self.check_internet_connectivity()
+        
+    def check_internet_connectivity(self):
+        """Check if internet is available for map tiles"""
+        def check_connectivity():
+            try:
+                # Try to reach OpenStreetMap with proper headers
+                logger.info("Checking internet connectivity to OpenStreetMap...")
+                headers = {
+                    'User-Agent': 'MeshtasticUI/1.0 (Educational/Research Use)'
+                }
+                # Try a simple tile request instead of the main page
+                response = requests.get("https://tile.openstreetmap.org/0/0/0.png", 
+                                      headers=headers, timeout=10)
+                logger.info(f"Response status code: {response.status_code}")
+                self.internet_available = response.status_code == 200
+                logger.info(f"Internet connectivity: {'Available' if self.internet_available else 'Unavailable'}")
+            except Exception as e:
+                self.internet_available = False
+                logger.info(f"No internet connectivity: {e}")
+                
+            # Determine map type to use
+            self.use_real_map = MAPVIEW_AVAILABLE and self.internet_available
+            logger.info(f"Using {'real map' if self.use_real_map else 'coordinate plot'}")
+            
+        threading.Thread(target=check_connectivity, daemon=True).start()
+            
+    def calculate_distance(self, lat1, lon1, lat2, lon2):
+        """Calculate distance between two GPS coordinates in kilometers"""
+        if None in (lat1, lon1, lat2, lon2):
+            return None
+            
+        # Haversine formula
+        R = 6371  # Earth's radius in kilometers
+        
+        lat1_rad = math.radians(lat1)
+        lat2_rad = math.radians(lat2)
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        
+        a = (math.sin(dlat/2) * math.sin(dlat/2) + 
+             math.cos(lat1_rad) * math.cos(lat2_rad) * 
+             math.sin(dlon/2) * math.sin(dlon/2))
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        
+        return R * c
+
     def create_widgets(self):
         """Create the main UI layout"""
         # Main container
@@ -114,7 +179,7 @@ class MeshtasticUI:
         self.create_config_tab()
         
     def create_map_tab(self):
-        """Create map visualization tab"""
+        """Create map visualization tab with real map or coordinate plot fallback"""
         map_frame = ttk.Frame(self.notebook)
         self.notebook.add(map_frame, text="Map")
         
@@ -159,20 +224,99 @@ class MeshtasticUI:
         nodes_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.nodes_tree.configure(yscrollcommand=nodes_scrollbar.set)
         
-        # Map visualization area (placeholder)
-        map_viz_frame = ttk.LabelFrame(map_content, text="Map Visualization", padding="10")
-        map_viz_frame.grid(row=0, column=1, rowspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
-        map_viz_frame.columnconfigure(0, weight=1)
-        map_viz_frame.rowconfigure(0, weight=1)
+        # Map visualization area
+        self.map_viz_frame = ttk.LabelFrame(map_content, text="Map Visualization", padding="10")
+        self.map_viz_frame.grid(row=0, column=1, rowspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.map_viz_frame.columnconfigure(0, weight=1)
+        self.map_viz_frame.rowconfigure(0, weight=1)
         
-        # Placeholder for map - in a real implementation, you'd use a mapping library
-        self.map_canvas = tk.Canvas(map_viz_frame, bg="lightgray", width=400, height=400)
-        self.map_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Initialize map after a short delay to allow connectivity check to complete
+        self.root.after(1000, self.initialize_map)
         
-        # Add placeholder text
-        self.map_canvas.create_text(200, 200, text="Map Visualization\n(Placeholder)", 
-                                   justify=tk.CENTER, font=("Arial", 12))
+    def initialize_map(self):
+        """Initialize either real map or coordinate plot based on availability"""
+        try:
+            if self.use_real_map:
+                self.create_real_map()
+            else:
+                self.create_coordinate_plot()
+        except Exception as e:
+            logger.error(f"Error initializing map: {e}")
+            # Fallback to coordinate plot if real map fails
+            if self.use_real_map:
+                logger.info("Falling back to coordinate plot")
+                self.use_real_map = False
+                self.create_coordinate_plot()
+                
+    def create_real_map(self):
+        """Create real map using tkintermapview"""
+        logger.info("Creating real map (online mode - caching not available in current tkintermapview version)")
         
+        # Create map widget (online mode)
+        self.map_widget = tkintermapview.TkinterMapView(
+            self.map_viz_frame,
+            width=400,
+            height=400,
+            corner_radius=0
+        )
+        
+        # Configure tile caching for offline use
+        self.map_widget.set_tile_server("https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", max_zoom=19)
+        
+        # Set initial position (will be updated when nodes are found)
+        self.map_widget.set_position(37.7749, -122.4194)  # San Francisco as default
+        self.map_widget.set_zoom(10)
+        
+        self.map_widget.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Update frame title  
+        self.map_viz_frame.config(text="Map Visualization (OpenStreetMap - Online Only)")
+        
+    def create_coordinate_plot(self):
+        """Create simple coordinate plot as fallback"""
+        logger.info("Creating coordinate plot fallback")
+        
+        self.coordinate_canvas = tk.Canvas(self.map_viz_frame, bg="lightgray", width=400, height=400)
+        self.coordinate_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Add grid lines
+        self.draw_coordinate_grid()
+        
+        # Add instructions
+        self.coordinate_canvas.create_text(200, 50, text="Coordinate Plot\n(No internet/map tiles)", 
+                                         justify=tk.CENTER, font=("Arial", 10), fill="darkblue")
+        
+        # Update frame title
+        title = "Map Visualization (Coordinate Plot"
+        if not self.internet_available:
+            title += " - Offline"
+        elif not MAPVIEW_AVAILABLE:
+            title += " - Map library unavailable"
+        title += ")"
+        self.map_viz_frame.config(text=title)
+        
+    def draw_coordinate_grid(self):
+        """Draw grid lines on coordinate plot"""
+        if not self.coordinate_canvas:
+            return
+            
+        canvas = self.coordinate_canvas
+        width = 400
+        height = 400
+        
+        # Clear existing grid
+        canvas.delete("grid")
+        
+        # Draw grid lines
+        for i in range(0, width, 50):
+            canvas.create_line(i, 0, i, height, fill="lightblue", width=1, tags="grid")
+        for i in range(0, height, 50):
+            canvas.create_line(0, i, width, i, fill="lightblue", width=1, tags="grid")
+            
+        # Draw center lines
+        canvas.create_line(width//2, 0, width//2, height, fill="blue", width=2, tags="grid")
+        canvas.create_line(0, height//2, width, height//2, fill="blue", width=2, tags="grid")
+
     def create_chat_tab(self):
         """Create chat interface tab"""
         chat_frame = ttk.Frame(self.notebook)
@@ -286,9 +430,51 @@ class MeshtasticUI:
         # Update button
         ttk.Button(node_frame, text="Update Node Info", command=self.update_node_info).grid(row=2, column=0, columnspan=2, pady=10)
         
+        # Region settings
+        region_frame = ttk.LabelFrame(config_content, text="Region Settings", padding="10")
+        region_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        region_frame.columnconfigure(1, weight=1)
+        
+        # Region selection
+        ttk.Label(region_frame, text="Region:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        self.region_var = tk.StringVar()
+        
+        # List of supported regions
+        self.regions = [
+            "ANZ",      # Australia/New Zealand
+            "CN",       # China
+            "EU_433",   # Europe 433MHz
+            "EU_868",   # Europe 868MHz
+            "IN",       # India
+            "JP",       # Japan
+            "KR",       # Korea
+            "MY_433",   # Malaysia 433MHz
+            "MY_919",   # Malaysia 919MHz
+            "NZ_865",   # New Zealand 865MHz
+            "RU",       # Russia
+            "SG_923",   # Singapore
+            "TH",       # Thailand
+            "TW",       # Taiwan
+            "UA_433",   # Ukraine 433MHz
+            "UA_868",   # Ukraine 868MHz
+            "US"        # United States
+        ]
+        
+        region_combo = ttk.Combobox(region_frame, textvariable=self.region_var, 
+                                   values=self.regions, state="readonly", width=10)
+        region_combo.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
+        
+        # Region info label
+        self.region_info_label = ttk.Label(region_frame, text="Select region for regulatory compliance", 
+                                          foreground="gray", font=("Arial", 8))
+        self.region_info_label.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=2)
+        
+        # Update region button
+        ttk.Button(region_frame, text="Update Region", command=self.update_region).grid(row=2, column=0, columnspan=2, pady=10)
+        
         # Channel settings
         channel_frame = ttk.LabelFrame(config_content, text="Channel Settings", padding="10")
-        channel_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        channel_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
         channel_frame.columnconfigure(1, weight=1)
         
         # Channel name
@@ -303,7 +489,7 @@ class MeshtasticUI:
         
         # Power settings
         power_frame = ttk.LabelFrame(config_content, text="Power Settings", padding="10")
-        power_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        power_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
         
         # Battery level display
         ttk.Label(power_frame, text="Battery Level:").grid(row=0, column=0, sticky=tk.W, pady=2)
@@ -312,7 +498,7 @@ class MeshtasticUI:
         
         # Actions frame
         actions_frame = ttk.LabelFrame(config_content, text="Actions", padding="10")
-        actions_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        actions_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
         
         # Action buttons
         ttk.Button(actions_frame, text="Reboot Device", command=self.reboot_device).grid(row=0, column=0, padx=5, pady=2)
@@ -353,6 +539,7 @@ class MeshtasticUI:
         def connect_thread():
             try:
                 self.update_status("Connecting...")
+                self.status_label.config(text="Status: Connecting...", foreground="orange")
                 
                 conn_type = self.connection_type.get()
                 param = self.connection_param.get()
@@ -388,7 +575,7 @@ class MeshtasticUI:
                 logger.error(f"Connection failed: {e}")
                 self.update_status("Connection failed")
                 error_message = str(e)
-                self.root.after(0, lambda: messagebox.showerror("Connection Error", error_message))
+                self.root.after(0, lambda: self.on_connect_failed(error_message))
                 
         threading.Thread(target=connect_thread, daemon=True).start()
         
@@ -441,6 +628,13 @@ class MeshtasticUI:
         
         # Update device info
         self.get_device_info()
+        
+    def on_connect_failed(self, error_message):
+        """Handle failed connection"""
+        self.connect_btn.config(state="normal")
+        self.disconnect_btn.config(state="disabled")
+        self.status_label.config(text="Status: Connection Failed", foreground="red")
+        messagebox.showerror("Connection Error", error_message)
         
     def on_disconnect(self):
         """Handle disconnection"""
@@ -577,12 +771,48 @@ class MeshtasticUI:
         self.update_nodes_display()
         
     def update_nodes_display(self):
-        """Update nodes tree display"""
+        """Update nodes tree display and map"""
         # Clear existing items
         for item in self.nodes_tree.get_children():
             self.nodes_tree.delete(item)
             
-        # Add nodes
+        # Get local node position for distance calculations
+        local_position = None
+        if self.interface and hasattr(self.interface, 'localNode'):
+            try:
+                local_node_info = self.interface.getMyNodeInfo()
+                if local_node_info and 'position' in local_node_info:
+                    pos = local_node_info['position']
+                    if 'latitude' in pos and 'longitude' in pos:
+                        local_position = (pos['latitude'], pos['longitude'])
+            except Exception as e:
+                logger.debug(f"Could not get local position: {e}")
+            
+        # Add local device first (if connected and has GPS)
+        local_device_position = self.get_local_device_position()
+        if local_device_position:
+            try:
+                lat, lon, name = local_device_position
+                
+                # Get battery info for local device
+                battery = "N/A"
+                if self.interface and hasattr(self.interface, 'getMyNodeInfo'):
+                    try:
+                        node_info = self.interface.getMyNodeInfo()
+                        if node_info and 'deviceMetrics' in node_info:
+                            device_metrics = node_info['deviceMetrics']
+                            if 'batteryLevel' in device_metrics:
+                                battery = f"{device_metrics['batteryLevel']}%"
+                    except Exception as e:
+                        logger.debug(f"Could not get local device battery: {e}")
+                
+                # Add local device to tree
+                self.nodes_tree.insert("", tk.END, values=(f"📍 {name} (You)", "LOCAL", "0m", battery, "Connected"))
+                
+            except Exception as e:
+                logger.error(f"Error adding local device to display: {e}")
+        
+        # Add remote nodes
         for node_id, node in self.nodes.items():
             try:
                 # Extract node info
@@ -590,9 +820,19 @@ class MeshtasticUI:
                 name = user.get('longName', 'Unknown')
                 short_name = user.get('shortName', 'N/A')
                 
-                # Position info
+                # Position info and distance calculation
                 position = node.get('position', {})
                 distance = "N/A"
+                
+                if 'latitude' in position and 'longitude' in position and local_position:
+                    node_lat = position['latitude']
+                    node_lon = position['longitude']
+                    dist_km = self.calculate_distance(local_position[0], local_position[1], node_lat, node_lon)
+                    if dist_km is not None:
+                        if dist_km < 1:
+                            distance = f"{dist_km * 1000:.0f}m"
+                        else:
+                            distance = f"{dist_km:.1f}km"
                 
                 # Battery info
                 device_metrics = node.get('deviceMetrics', {})
@@ -611,8 +851,14 @@ class MeshtasticUI:
             except Exception as e:
                 logger.error(f"Error updating node display: {e}")
                 
-        # Update node count
-        self.node_count_text.set(f"Nodes: {len(self.nodes)}")
+        # Update node count (include local device if it has GPS)
+        total_nodes = len(self.nodes)
+        if self.get_local_device_position():
+            total_nodes += 1
+        self.node_count_text.set(f"Nodes: {total_nodes}")
+        
+        # Update map with nodes
+        self.update_map_nodes()
         
         # Update destination combo
         destinations = ["Broadcast"]
@@ -632,6 +878,213 @@ class MeshtasticUI:
                         
         if dest_widget:
             dest_widget.configure(values=destinations)
+            
+    def get_local_device_position(self):
+        """Get the GPS position of the local device if available"""
+        if not self.interface or not hasattr(self.interface, 'localNode'):
+            return None
+            
+        try:
+            # Get local node information
+            local_node_info = self.interface.getMyNodeInfo()
+            if local_node_info and 'position' in local_node_info:
+                pos = local_node_info['position']
+                if 'latitude' in pos and 'longitude' in pos:
+                    lat = pos['latitude']
+                    lon = pos['longitude']
+                    
+                    # Get device name
+                    name = "Local Device"
+                    if hasattr(self.interface, 'getMyUser'):
+                        user = self.interface.getMyUser()
+                        if user and 'longName' in user:
+                            name = user['longName']
+                    
+                    return (lat, lon, name)
+                    
+        except Exception as e:
+            logger.debug(f"Could not get local device position: {e}")
+            
+        return None
+            
+    def update_map_nodes(self):
+        """Update nodes on the map"""
+        try:
+            if self.use_real_map and self.map_widget:
+                self.update_real_map_nodes()
+            elif self.coordinate_canvas:
+                self.update_coordinate_plot_nodes()
+        except Exception as e:
+            logger.error(f"Error updating map nodes: {e}")
+            
+    def update_real_map_nodes(self):
+        """Update nodes on real map"""
+        if not self.map_widget:
+            return
+            
+        # Clear existing markers
+        for marker in self.map_markers.values():
+            try:
+                marker.delete()
+            except:
+                pass
+        self.map_markers.clear()
+        
+        # Get nodes with position data
+        positioned_nodes = []
+        
+        # Add local device first (if GPS available)
+        local_position = self.get_local_device_position()
+        if local_position:
+            lat, lon, name = local_position
+            positioned_nodes.append((lat, lon, f"📍 {name} (You)", "blue"))
+        
+        # Add remote nodes
+        for node_id, node in self.nodes.items():
+            position = node.get('position', {})
+            if 'latitude' in position and 'longitude' in position:
+                user = node.get('user', {})
+                name = user.get('longName', f'Node {node_id}')
+                lat = position['latitude']
+                lon = position['longitude']
+                
+                # Determine marker color based on battery or connection status
+                battery = node.get('deviceMetrics', {}).get('batteryLevel', 0)
+                if battery > 75:
+                    marker_color = "green"
+                elif battery > 25:
+                    marker_color = "orange"
+                else:
+                    marker_color = "red"
+                
+                positioned_nodes.append((lat, lon, name, marker_color))
+                
+        # Add markers for positioned nodes
+        for lat, lon, name, color in positioned_nodes:
+            try:
+                marker = self.map_widget.set_marker(lat, lon, text=name, marker_color_circle=color, marker_color_outside=color)
+                self.map_markers[name] = marker
+            except Exception as e:
+                logger.debug(f"Could not add marker for {name}: {e}")
+                
+        # Auto-fit map to show all nodes
+        if positioned_nodes:
+            try:
+                # Calculate bounds
+                lats = [pos[0] for pos in positioned_nodes]
+                lons = [pos[1] for pos in positioned_nodes]
+                
+                center_lat = sum(lats) / len(lats)
+                center_lon = sum(lons) / len(lons)
+                
+                # Set position and zoom to fit all nodes
+                self.map_widget.set_position(center_lat, center_lon)
+                
+                # Calculate appropriate zoom level
+                lat_range = max(lats) - min(lats)
+                lon_range = max(lons) - min(lons)
+                max_range = max(lat_range, lon_range)
+                
+                if max_range > 1:
+                    zoom = 8
+                elif max_range > 0.1:
+                    zoom = 12
+                elif max_range > 0.01:
+                    zoom = 15
+                else:
+                    zoom = 17
+                    
+                self.map_widget.set_zoom(zoom)
+                
+            except Exception as e:
+                logger.debug(f"Could not auto-fit map: {e}")
+                
+    def update_coordinate_plot_nodes(self):
+        """Update nodes on coordinate plot"""
+        if not self.coordinate_canvas:
+            return
+            
+        # Clear existing node markers
+        self.coordinate_canvas.delete("node")
+        
+        # Get nodes with position data
+        positioned_nodes = []
+        
+        # Add local device first (if GPS available)
+        local_position = self.get_local_device_position()
+        if local_position:
+            lat, lon, name = local_position
+            positioned_nodes.append((lat, lon, "YOU", "blue"))
+        
+        # Add remote nodes
+        for node_id, node in self.nodes.items():
+            position = node.get('position', {})
+            if 'latitude' in position and 'longitude' in position:
+                user = node.get('user', {})
+                name = user.get('shortName', f'N{node_id}')[:4]  # Short name for space
+                lat = position['latitude']
+                lon = position['longitude']
+                
+                # Determine marker color based on battery
+                battery = node.get('deviceMetrics', {}).get('batteryLevel', 0)
+                if battery > 75:
+                    color = "green"
+                elif battery > 25:
+                    color = "orange"
+                else:
+                    color = "red"
+                
+                positioned_nodes.append((lat, lon, name, color))
+                
+        if not positioned_nodes:
+            # Show message if no positioned nodes
+            self.coordinate_canvas.create_text(200, 200, text="No nodes with GPS data", 
+                                             justify=tk.CENTER, font=("Arial", 12), fill="gray", tags="node")
+            return
+            
+        # Calculate coordinate bounds and scale
+        lats = [pos[0] for pos in positioned_nodes]
+        lons = [pos[1] for pos in positioned_nodes]
+        
+        min_lat, max_lat = min(lats), max(lats)
+        min_lon, max_lon = min(lons), max(lons)
+        
+        # Add padding
+        lat_range = max_lat - min_lat
+        lon_range = max_lon - min_lon
+        padding = max(lat_range, lon_range) * 0.1
+        
+        min_lat -= padding
+        max_lat += padding
+        min_lon -= padding
+        max_lon += padding
+        
+        # Map coordinates to canvas
+        canvas_width = 400
+        canvas_height = 400
+        margin = 30
+        
+        for lat, lon, name, color in positioned_nodes:
+            # Scale to canvas coordinates
+            if max_lat != min_lat:
+                y = margin + (max_lat - lat) / (max_lat - min_lat) * (canvas_height - 2 * margin)
+            else:
+                y = canvas_height // 2
+                
+            if max_lon != min_lon:
+                x = margin + (lon - min_lon) / (max_lon - min_lon) * (canvas_width - 2 * margin)
+            else:
+                x = canvas_width // 2
+            
+            # Draw node marker
+            radius = 10 if color == "blue" else 8  # Make local device marker slightly larger
+            outline_width = 3 if color == "blue" else 2  # Make local device outline thicker
+            self.coordinate_canvas.create_oval(x - radius, y - radius, x + radius, y + radius, 
+                                             fill=color, outline="black", width=outline_width, tags="node")
+            
+            # Add label
+            self.coordinate_canvas.create_text(x, y - radius - 10, text=name, 
+                                             font=("Arial", 8), fill="black", tags="node")
             
     def get_device_info(self):
         """Get device information"""
@@ -656,11 +1109,75 @@ class MeshtasticUI:
                         self.long_name_var.set(user.get('longName', ''))
                         self.short_name_var.set(user.get('shortName', ''))
                         
-                # Hardware info
+                # Get device metadata
+                if hasattr(self.interface, 'getMyNodeInfo'):
+                    node_info = self.interface.getMyNodeInfo()
+                    if node_info:
+                        # Hardware info
+                        device_metadata = node_info.get('deviceMetrics', {})
+                        if 'hwModel' in device_metadata:
+                            self.device_info_labels["Hardware"].config(text=device_metadata['hwModel'])
+                        
+                        # Firmware version
+                        if 'firmwareVersion' in node_info:
+                            self.device_info_labels["Firmware"].config(text=node_info['firmwareVersion'])
+                        
+                        # Battery level
+                        if 'batteryLevel' in device_metadata:
+                            battery_level = device_metadata['batteryLevel']
+                            self.battery_label.config(text=f"{battery_level}%")
+                            
+                # Get region information
                 if hasattr(local_node, 'localConfig'):
-                    # This would be populated with actual device info
-                    pass
-                    
+                    config = local_node.localConfig
+                    if hasattr(config, 'lora') and hasattr(config.lora, 'region'):
+                        # Map region enum values back to names
+                        region_map = {
+                            1: "US",        # US
+                            2: "EU_433",    # EU_433
+                            3: "EU_868",    # EU_868
+                            7: "ANZ",       # ANZ
+                            8: "CN",        # CN
+                            9: "IN",        # IN
+                            10: "JP",       # JP
+                            11: "KR",       # KR
+                            12: "MY_433",   # MY_433
+                            13: "MY_919",   # MY_919
+                            14: "NZ_865",   # NZ_865
+                            15: "RU",       # RU
+                            16: "SG_923",   # SG_923
+                            17: "TH",       # TH
+                            18: "TW",       # TW
+                            19: "UA_433",   # UA_433
+                            20: "UA_868",   # UA_868
+                        }
+                        
+                        region_num = config.lora.region
+                        region_name = region_map.get(region_num, f"Unknown ({region_num})")
+                        self.device_info_labels["Region"].config(text=region_name)
+                        
+                        # Update the region dropdown selection
+                        if region_name in self.regions:
+                            self.region_var.set(region_name)
+                            
+                # Get channel information
+                if hasattr(self.interface, 'getChannelSettings'):
+                    try:
+                        channel_settings = self.interface.getChannelSettings()
+                        if channel_settings:
+                            # Update channel info
+                            channel_name = channel_settings.get('name', 'Primary')
+                            self.device_info_labels["Channel"].config(text=channel_name)
+                            self.channel_name_var.set(channel_name)
+                            
+                            # Update PSK if available
+                            if 'psk' in channel_settings:
+                                # PSK is usually displayed as base64 or hex
+                                psk_display = "***" if channel_settings['psk'] else "None"
+                                self.psk_var.set(psk_display)
+                    except Exception as e:
+                        logger.debug(f"Could not get channel settings: {e}")
+                        
         except Exception as e:
             logger.error(f"Error getting device info: {e}")
             
@@ -690,6 +1207,83 @@ class MeshtasticUI:
         except Exception as e:
             logger.error(f"Error updating node info: {e}")
             messagebox.showerror("Error", f"Failed to update node info: {e}")
+            
+    def update_region(self):
+        """Update device region setting"""
+        if not self.interface:
+            messagebox.showwarning("Warning", "Not connected to device")
+            return
+            
+        # Validate that the interface has the required attributes
+        if not hasattr(self.interface, 'localNode'):
+            messagebox.showwarning("Warning", "Interface not properly initialized")
+            return
+            
+        selected_region = self.region_var.get()
+        if not selected_region:
+            messagebox.showwarning("Warning", "Please select a region")
+            return
+            
+        try:
+            # Get the local node config
+            local_node = self.interface.localNode
+            if local_node and hasattr(local_node, 'localConfig'):
+                # Create a new config object with the region setting
+                config = local_node.localConfig
+                
+                # Update the region in the config
+                # The region is stored in the LoRa config
+                if hasattr(config, 'lora') and hasattr(config.lora, 'region'):
+                    # Map our region names to the protobuf enum values
+                    region_map = {
+                        "ANZ": 7,       # ANZ
+                        "CN": 8,        # CN
+                        "EU_433": 2,    # EU_433
+                        "EU_868": 3,    # EU_868
+                        "IN": 9,        # IN
+                        "JP": 10,       # JP
+                        "KR": 11,       # KR
+                        "MY_433": 12,   # MY_433
+                        "MY_919": 13,   # MY_919
+                        "NZ_865": 14,   # NZ_865
+                        "RU": 15,       # RU
+                        "SG_923": 16,   # SG_923
+                        "TH": 17,       # TH
+                        "TW": 18,       # TW
+                        "UA_433": 19,   # UA_433
+                        "UA_868": 20,   # UA_868
+                        "US": 1         # US
+                    }
+                    
+                    if selected_region in region_map:
+                        config.lora.region = region_map[selected_region]
+                        
+                        # Write the config back to the device
+                        local_node.writeConfig("lora")
+                        
+                        messagebox.showinfo("Success", f"Region updated to {selected_region}.\n\nDevice will reboot to apply the new region setting.")
+                        
+                        # Update the display
+                        self.get_device_info()
+                        
+                    else:
+                        messagebox.showerror("Error", f"Unsupported region: {selected_region}")
+                        
+                else:
+                    messagebox.showerror("Error", "Unable to access LoRa configuration")
+                    
+            else:
+                messagebox.showwarning("Warning", "Local node configuration not available")
+                
+        except Exception as e:
+            logger.error(f"Error updating region: {e}")
+            messagebox.showerror("Error", f"Failed to update region: {e}")
+            
+            # Provide helpful error message for common issues
+            if "not connected" in str(e).lower():
+                messagebox.showinfo("Help", "Make sure the device is connected and try again.")
+            elif "permission" in str(e).lower():
+                messagebox.showinfo("Help", "Region update requires a stable connection. Try reconnecting and ensure the device is not in sleep mode.")
             
     def reboot_device(self):
         """Reboot the device"""
