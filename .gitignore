@@ -1,7 +1,14 @@
-# Map tile cache (not currently used - caching not working in tkintermapview v1.29)
-# map_cache/
-# *.db
-# *.db-journal
+# Database files
+database/*.db
+database/*.db-journal
+database/*.db-shm
+database/*.db-wal
+
+# Export files
+exports/
+*.csv
+*.json
+*.png
 
 # Python
 __pycache__/
