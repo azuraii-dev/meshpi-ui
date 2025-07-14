@@ -340,17 +340,12 @@ class MeshtasticUI:
                 "max_zoom": 20,
                 "attribution": "© Google"
             },
-            "🗺️ Hybrid (Google)": {
-                "url": "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
-                "max_zoom": 20,
-                "attribution": "© Google"
-            },
-            "⛰️ Terrain": {
-                "url": "https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png",
-                "max_zoom": 18,
-                "attribution": "© Stamen Design, © OpenStreetMap contributors"
-            },
-            "🏞️ Topo (OpenTopo)": {
+                         "🗺️ Hybrid (Google)": {
+                 "url": "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
+                 "max_zoom": 20,
+                 "attribution": "© Google"
+             },
+             "🏞️ Topo (OpenTopo)": {
                 "url": "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
                 "max_zoom": 17,
                 "attribution": "© OpenTopoMap, © OpenStreetMap contributors"
