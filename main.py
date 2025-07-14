@@ -263,9 +263,20 @@ class MeshtasticUI:
         # Configure tile caching for offline use
         self.map_widget.set_tile_server("https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", max_zoom=19)
         
-        # Set initial position (will be updated when nodes are found)
-        self.map_widget.set_position(37.7749, -122.4194)  # San Francisco as default
-        self.map_widget.set_zoom(10)
+        # Set initial position based on available location data
+        initial_position = self.get_initial_map_position()
+        if initial_position:
+            lat, lon, source = initial_position
+            logger.info(f"Setting initial map position to {lat}, {lon} (source: {source})")
+            self.map_widget.set_position(lat, lon)
+            # Use higher zoom if we have GPS location
+            zoom = 15 if source == "GPS" else 10
+            self.map_widget.set_zoom(zoom)
+        else:
+            # Fall back to San Francisco
+            logger.info("No location data available, using San Francisco as default")
+            self.map_widget.set_position(37.7749, -122.4194)
+            self.map_widget.set_zoom(10)
         
         self.map_widget.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
@@ -906,7 +917,101 @@ class MeshtasticUI:
             logger.debug(f"Could not get local device position: {e}")
             
         return None
+        
+    def get_initial_map_position(self):
+        """Get initial map position from GPS or IP geolocation"""
+        # First try to get GPS location from local device
+        local_position = self.get_local_device_position()
+        if local_position:
+            lat, lon, name = local_position
+            return (lat, lon, "GPS")
+        
+        # If no GPS and we're online, try IP geolocation
+        if self.internet_available:
+            ip_location = self.get_ip_location()
+            if ip_location:
+                lat, lon, location_name = ip_location
+                return (lat, lon, f"IP ({location_name})")
+        
+        return None
+    
+    def get_ip_location(self):
+        """Get approximate location from IP address"""
+        try:
+            logger.info("Attempting to get location from IP address...")
             
+            # Try multiple IP geolocation services for reliability
+            services = [
+                {
+                    'url': 'https://ipapi.co/json/',
+                    'lat_key': 'latitude',
+                    'lon_key': 'longitude',
+                    'location_key': 'city'
+                },
+                {
+                    'url': 'http://ip-api.com/json/',
+                    'lat_key': 'lat',
+                    'lon_key': 'lon',
+                    'location_key': 'city'
+                },
+                {
+                    'url': 'https://ipinfo.io/json',
+                    'lat_key': 'loc',  # Special handling needed
+                    'lon_key': 'loc',  # Special handling needed
+                    'location_key': 'city'
+                }
+            ]
+            
+            for service in services:
+                try:
+                    headers = {
+                        'User-Agent': 'MeshtasticUI/1.0 (Educational/Research Use)'
+                    }
+                    response = requests.get(service['url'], headers=headers, timeout=10)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        # Special handling for ipinfo.io
+                        if service['url'] == 'https://ipinfo.io/json':
+                            if 'loc' in data:
+                                lat_str, lon_str = data['loc'].split(',')
+                                lat, lon = float(lat_str), float(lon_str)
+                            else:
+                                continue
+                        else:
+                            # Standard handling for other services
+                            if service['lat_key'] in data and service['lon_key'] in data:
+                                lat = float(data[service['lat_key']])
+                                lon = float(data[service['lon_key']])
+                            else:
+                                continue
+                        
+                        # Get location name
+                        location_name = data.get(service['location_key'], 'Unknown')
+                        
+                        # Validate coordinates
+                        if -90 <= lat <= 90 and -180 <= lon <= 180:
+                            logger.info(f"Got IP location: {lat}, {lon} ({location_name})")
+                            return (lat, lon, location_name)
+                        else:
+                            logger.warning(f"Invalid coordinates from {service['url']}: {lat}, {lon}")
+                            continue
+                            
+                except requests.exceptions.RequestException as e:
+                    logger.debug(f"IP geolocation service {service['url']} failed: {e}")
+                    continue
+                except (ValueError, KeyError) as e:
+                    logger.debug(f"Error parsing response from {service['url']}: {e}")
+                    continue
+            
+            logger.info("All IP geolocation services failed")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting IP location: {e}")
+            return None
+             
     def update_map_nodes(self):
         """Update nodes on the map"""
         try:
