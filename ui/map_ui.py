@@ -187,32 +187,32 @@ class MapUI:
                 "max_zoom": 19,
                 "attribution": "© OpenStreetMap contributors"
             },
-            "📡 Satellite (Esri)": {
+            "Satellite (Esri)": {
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
                 "max_zoom": 19,
                 "attribution": "© Esri, Maxar, Earthstar Geographics"
             },
-            "🌍 Satellite (Google)": {
+            "Satellite (Google)": {
                 "url": "http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
                 "max_zoom": 20,
                 "attribution": "© Google"
             },
-            "🗺️ Hybrid (Google)": {
+            "Hybrid (Google)": {
                 "url": "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
                 "max_zoom": 20,
                 "attribution": "© Google"
             },
-            "🏞️ Topo (OpenTopo)": {
+            "Topo (OpenTopo)": {
                 "url": "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
                 "max_zoom": 17,
                 "attribution": "© OpenTopoMap, © OpenStreetMap contributors"
             },
-            "☀️ Light Theme": {
+            "Light Theme": {
                 "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
                 "max_zoom": 19,
                 "attribution": "© CartoDB, © OpenStreetMap contributors"
             },
-            "🌙 Dark Theme": {
+            "Dark Theme": {
                 "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
                 "max_zoom": 19,
                 "attribution": "© CartoDB, © OpenStreetMap contributors"
@@ -351,7 +351,7 @@ class MapUI:
         
         # Add instructions
         self.coordinate_canvas.create_text(200, 50, text="Coordinate Plot\n(No internet/map tiles)", 
-                                         justify=tk.CENTER, font=("Arial", 10), fill="darkblue")
+                                         justify=tk.CENTER, font=("Arial", 10), fill="#6B46C1")
         
         # Update frame title
         self.update_map_frame_title()
@@ -370,13 +370,13 @@ class MapUI:
         
         # Draw grid lines
         for i in range(0, width, 50):
-            canvas.create_line(i, 0, i, height, fill="lightblue", width=1, tags="grid")
+            canvas.create_line(i, 0, i, height, fill="#E5E7EB", width=1, tags="grid")
         for i in range(0, height, 50):
-            canvas.create_line(0, i, width, i, fill="lightblue", width=1, tags="grid")
+            canvas.create_line(0, i, width, i, fill="#E5E7EB", width=1, tags="grid")
             
         # Draw center lines
-        canvas.create_line(width//2, 0, width//2, height, fill="blue", width=2, tags="grid")
-        canvas.create_line(0, height//2, width, height//2, fill="blue", width=2, tags="grid")
+        canvas.create_line(width//2, 0, width//2, height, fill="#6B46C1", width=2, tags="grid")
+        canvas.create_line(0, height//2, width, height//2, fill="#6B46C1", width=2, tags="grid")
         
     def get_initial_map_position(self):
         """Get initial map position from GPS or IP geolocation"""
@@ -546,7 +546,7 @@ class MapUI:
                         logger.debug(f"Could not get local device battery: {e}")
                 
                 # Add local device to tree
-                self.nodes_tree.insert("", tk.END, values=(f"📍 {name} (You)", "LOCAL", "0m", battery, "Connected"))
+                self.nodes_tree.insert("", tk.END, values=(f"{name} (You)", "LOCAL", "0m", battery, "Connected"))
                 
             except Exception as e:
                 logger.error(f"Error adding local device to display: {e}")
@@ -623,7 +623,7 @@ class MapUI:
         local_position = self.get_local_device_position()
         if local_position:
             lat, lon, name = local_position
-            positioned_nodes.append((lat, lon, f"📍 {name} (You)", "blue"))
+            positioned_nodes.append((lat, lon, f"{name} (You)", "#6B46C1"))
         
         # Add remote nodes
         if nodes:
@@ -701,7 +701,7 @@ class MapUI:
         local_position = self.get_local_device_position()
         if local_position:
             lat, lon, name = local_position
-            positioned_nodes.append((lat, lon, "YOU", "blue"))
+            positioned_nodes.append((lat, lon, f"{name} (You)", "#6B46C1"))
         
         # Add remote nodes
         if nodes:
@@ -765,8 +765,8 @@ class MapUI:
                 x = canvas_width // 2
             
             # Draw node marker
-            radius = 10 if color == "blue" else 8  # Make local device marker slightly larger
-            outline_width = 3 if color == "blue" else 2  # Make local device outline thicker
+            radius = 10 if color == "#6B46C1" else 8  # Make local device marker slightly larger
+            outline_width = 3 if color == "#6B46C1" else 2  # Make local device outline thicker
             self.coordinate_canvas.create_oval(x - radius, y - radius, x + radius, y + radius, 
                                              fill=color, outline="black", width=outline_width, tags="node")
             

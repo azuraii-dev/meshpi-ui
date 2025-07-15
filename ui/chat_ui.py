@@ -150,17 +150,17 @@ class ChatUI:
             if portnum == 'TEXT_MESSAGE_APP':
                 return None, True  # Regular text message
             elif portnum == 'PRIVATE_APP':
-                return "📱 Private app message", True
+                return "[APP] Private app message", True
             elif portnum == 'ATAK_PLUGIN':
-                return "🗺️ ATAK location data", True
+                return "[ATAK] Location data", True
             elif portnum == 'SERIAL_APP':
-                return "📟 Serial data", True
+                return "[SERIAL] Serial data", True
             elif portnum == 'STORE_FORWARD_APP':
-                return "📦 Store & forward", True
+                return "[SF] Store & forward", True
             elif portnum == 'RANGE_TEST_APP':
-                return "📡 Range test", True
+                return "[RANGE] Range test", True
             elif portnum == 'AUDIO_APP':
-                return "🔊 Audio message", True
+                return "[AUDIO] Audio message", True
             elif portnum in hidden_types:
                 return None, False  # Don't show these
             else:
@@ -243,9 +243,9 @@ class ChatUI:
             
             # Format message with status indicator and better formatting
             if message_type == 'text':
-                status_indicator = "📨"
+                status_indicator = "[MSG]"
             else:
-                status_indicator = "📦"
+                status_indicator = "[DATA]"
             
             # Color coding based on message type
             if to_name == 'Broadcast':
@@ -313,7 +313,7 @@ class ChatUI:
             
             # Display with improved formatting
             dest_name = self.resolve_node_name(dest)
-            status_indicator = "📤" if want_ack else "✅"
+            status_indicator = "[SENT]" if want_ack else "[OK]"
             
             if dest_name == 'Broadcast':
                 msg_line = f"[{timestamp_str}] You → All: {message} {status_indicator}\n"
@@ -380,13 +380,13 @@ class ChatUI:
                 
                 # Choose status indicator
                 if status == 'delivered':
-                    status_indicator = "✓✓"
+                    status_indicator = "[DELIV]"
                 elif status == 'sent':
-                    status_indicator = "✓"
+                    status_indicator = "[SENT]"
                 elif status == 'failed':
-                    status_indicator = "❌"
+                    status_indicator = "[ERR]"
                 else:
-                    status_indicator = "?"
+                    status_indicator = "[?]"
                 
                 # Format display name with improved resolution
                 if from_node == 'LOCAL':
@@ -451,13 +451,13 @@ class ChatUI:
                 
                 # Choose status indicator
                 if status == 'delivered':
-                    status_indicator = "✓✓"
+                    status_indicator = "[DELIV]"
                 elif status == 'sent':
-                    status_indicator = "✓"
+                    status_indicator = "[SENT]"
                 elif status == 'failed':
-                    status_indicator = "❌"
+                    status_indicator = "[ERR]"
                 else:
-                    status_indicator = "?"
+                    status_indicator = "[?]"
                 
                 # Format display name with improved resolution
                 if from_node == 'LOCAL':
@@ -514,13 +514,13 @@ class ChatUI:
                     
                     # Choose status indicator
                     if status == 'delivered':
-                        status_indicator = "✓✓"
+                        status_indicator = "[DELIV]"
                     elif status == 'sent':
-                        status_indicator = "✓"
+                        status_indicator = "[SENT]"
                     elif status == 'failed':
-                        status_indicator = "❌"
+                        status_indicator = "[ERR]"
                     else:
-                        status_indicator = "?"
+                        status_indicator = "[?]"
                     
                     # Format display name
                     display_from = "You" if from_node == 'LOCAL' else (msg[12] if len(msg) > 12 and msg[12] else from_node)

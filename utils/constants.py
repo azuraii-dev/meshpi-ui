@@ -110,7 +110,7 @@ NODE_COLORS = {
     "medium": "orange",   # 25-75% battery
     "low": "red",         # <25% battery
     "unknown": "gray",    # Unknown battery
-    "local": "blue"       # Local device
+    "local": "#6B46C1"    # Local device
 }
 
 # Battery level thresholds
@@ -121,7 +121,7 @@ BATTERY_LOW_THRESHOLD = 25
 MESSAGE_STATUS_ICONS = {
     "sent": "✓",
     "delivered": "✓✓",
-    "failed": "❌",
+    "failed": "[ERR]",
     "received": "✓",
     "unknown": "?"
 }

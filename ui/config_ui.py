@@ -210,7 +210,7 @@ class ConfigUI:
         
         # Current profile display
         ttk.Label(profiles_frame, text="Current Profile:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.current_profile_label = ttk.Label(profiles_frame, text="Default", foreground="blue")
+        self.current_profile_label = ttk.Label(profiles_frame, text="Default", foreground="#6B46C1")
         self.current_profile_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
         
         # Profile selection

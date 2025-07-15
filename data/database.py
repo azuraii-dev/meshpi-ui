@@ -2,6 +2,7 @@
 """
 Optimized Database Manager for Meshtastic UI
 Features: Connection pooling, indexes, batch operations, and automatic cleanup
+Now with proper path management for executables
 """
 
 import sqlite3
@@ -13,13 +14,38 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager
 import logging
 
+# Import our path utilities
+try:
+    from utils.paths import get_database_path, ensure_data_directories, get_runtime_info
+    USE_PATH_UTILS = True
+except ImportError:
+    # Fallback for development if utils/paths.py doesn't exist yet
+    USE_PATH_UTILS = False
+
 logger = logging.getLogger(__name__)
 
 class DataLogger:
     """Optimized database manager with connection pooling and performance enhancements"""
     
-    def __init__(self, db_path="database/meshpy_data.db", pool_size=5):
-        self.db_path = db_path
+    def __init__(self, db_path=None, pool_size=5):
+        # Handle database path with executable support
+        if USE_PATH_UTILS and db_path is None:
+            # Ensure all data directories exist
+            paths = ensure_data_directories()
+            # Get the database path (handles both dev and executable modes)
+            self.db_path = str(get_database_path())
+            
+            # Log runtime information for debugging
+            runtime_info = get_runtime_info()
+            logger.info(f"Database initializing in {'executable' if runtime_info['is_executable'] else 'development'} mode")
+            logger.info(f"Database path: {self.db_path}")
+        else:
+            # Fallback to provided path or default
+            self.db_path = db_path or "database/meshpy_data.db"
+            # Ensure directory exists for fallback
+            import os
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        
         self.pool_size = pool_size
         self.connection_pool = queue.Queue(maxsize=pool_size)
         self.lock = threading.Lock()

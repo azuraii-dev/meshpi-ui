@@ -130,3 +130,27 @@ dmypy.json
 
 # Pyre type checker
 .pyre/ 
+
+# PyInstaller build artifacts
+build/
+dist/
+dist-*/
+*.exe
+*.app
+*.deb
+*.rpm
+*.dmg
+*.msi
+
+# Platform-specific spec files (generated)
+meshpy-ui-windows.spec
+meshpy-ui-macos.spec
+meshpy-ui-linux.spec
+
+# Docker build files (generated)
+Dockerfile.linux
+docker-compose.build.yml
+
+# Build scripts (generated)
+build.bat
+build.sh 

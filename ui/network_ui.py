@@ -80,7 +80,7 @@ class NetworkUI:
         
         for i, metric in enumerate(metrics):
             ttk.Label(self.network_stats_frame, text=f"{metric}:").grid(row=i+1, column=0, sticky=tk.W, pady=2)
-            label = ttk.Label(self.network_stats_frame, text="0", foreground="blue")
+            label = ttk.Label(self.network_stats_frame, text="0", foreground="#6B46C1")
             label.grid(row=i+1, column=1, sticky=tk.W, padx=(10, 0), pady=2)
             self.network_metrics_labels[metric] = label
         
@@ -161,7 +161,7 @@ class NetworkUI:
                         'name': name,
                         'x': 300,  # Center position
                         'y': 200,
-                        'color': 'blue',
+                        'color': '#6B46C1',
                         'size': 20,
                         'is_local': True,
                         'battery': 'N/A',
@@ -172,7 +172,7 @@ class NetworkUI:
                         'name': 'Local Device',
                         'x': 300,
                         'y': 200,
-                        'color': 'blue',
+                        'color': '#6B46C1',
                         'size': 20,
                         'is_local': True,
                         'battery': 'N/A',
@@ -273,7 +273,7 @@ class NetworkUI:
                     self.network_canvas.create_text(
                         mid_x, mid_y,
                         text=f"H{conn['hops']}",
-                        fill="blue",
+                        fill="#6B46C1",
                         font=("Arial", 8),
                         tags=("hop_label", conn_id)
                     )

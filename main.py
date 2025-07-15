@@ -25,6 +25,13 @@ from ui.analytics_ui import AnalyticsUI
 from ui.emergency_ui import EmergencyUI
 from ui.config_ui import ConfigUI
 
+# Import path utilities for data location info
+try:
+    from utils.paths import get_runtime_info, is_executable
+    SHOW_DATA_PATHS = True
+except ImportError:
+    SHOW_DATA_PATHS = False
+
 class MeshtasticApp:
     """Main application class for Meshtastic UI"""
     
@@ -32,6 +39,21 @@ class MeshtasticApp:
         self.root = root
         self.root.title(f"Meshtastic UI")
         self.root.geometry("1200x800")
+        
+        # Show data location info on startup
+        if SHOW_DATA_PATHS:
+            runtime_info = get_runtime_info()
+            if is_executable():
+                logger.info("=" * 60)
+                logger.info("RUNNING AS EXECUTABLE")
+                logger.info("=" * 60)
+                logger.info(f"Data will be stored in: {runtime_info['user_data_dir']}")
+                logger.info(f"Database location: {runtime_info['database_path']}")
+                logger.info(f"Logs location: {runtime_info['logs_dir']}")
+                logger.info("=" * 60)
+                
+                # Also show in title bar for executable mode
+                self.root.title(f"Meshtastic UI - Data in {runtime_info['user_data_dir']}")
         
         # Initialize core components
         self.data_logger = DataLogger()
@@ -103,7 +125,7 @@ class MeshtasticApp:
         self.status_label.grid(row=0, column=6, padx=(20, 0))
         
         # GPS Status indicator
-        self.gps_status_label = ttk.Label(conn_frame, text="🛰️ GPS: N/A", foreground="gray")
+        self.gps_status_label = ttk.Label(conn_frame, text="GPS: N/A", foreground="gray")
         self.gps_status_label.grid(row=0, column=7, padx=(20, 0))
         
     def create_main_content(self, parent):
@@ -312,7 +334,7 @@ class MeshtasticApp:
         self.connection_status_text.set("Disconnected")
         
         # Clear GPS status
-        self.gps_status_label.config(text="🛰️ GPS: N/A", foreground="gray")
+        self.gps_status_label.config(text="GPS: N/A", foreground="gray")
         
         # Clear node data in UI components
         if hasattr(self.map_ui, 'update_nodes_display'):
@@ -329,7 +351,7 @@ class MeshtasticApp:
     def check_gps_status(self):
         """Check and update GPS status"""
         if not self.interface_manager.is_connected():
-            self.gps_status_label.config(text="🛰️ GPS: N/A", foreground="gray")
+            self.gps_status_label.config(text="GPS: N/A", foreground="gray")
             return
             
         try:
@@ -340,21 +362,21 @@ class MeshtasticApp:
             satellites = gps_status.get('satellites', 0)
             
             if status == 'fixed':
-                self.gps_status_label.config(text=f"🛰️ GPS: Fixed ({satellites} sats)", foreground="green")
+                self.gps_status_label.config(text=f"GPS: Fixed ({satellites} sats)", foreground="green")
             elif status == 'searching':
-                self.gps_status_label.config(text=f"🛰️ GPS: Searching ({satellites} sats)", foreground="orange")
+                self.gps_status_label.config(text=f"GPS: Searching ({satellites} sats)", foreground="orange")
             elif status == 'no_signal':
-                self.gps_status_label.config(text="🛰️ GPS: No Signal", foreground="red")
+                self.gps_status_label.config(text="GPS: No Signal", foreground="red")
             elif status == 'disabled':
-                self.gps_status_label.config(text="🛰️ GPS: Disabled", foreground="gray")
+                self.gps_status_label.config(text="GPS: Disabled", foreground="gray")
             elif status == 'disconnected':
-                self.gps_status_label.config(text="🛰️ GPS: N/A", foreground="gray")
+                self.gps_status_label.config(text="GPS: N/A", foreground="gray")
             else:
-                self.gps_status_label.config(text="🛰️ GPS: Error", foreground="red")
+                self.gps_status_label.config(text="GPS: Error", foreground="red")
                     
         except Exception as e:
             logger.debug(f"Error checking GPS status: {e}")
-            self.gps_status_label.config(text="🛰️ GPS: Error", foreground="red")
+            self.gps_status_label.config(text="GPS: Error", foreground="red")
         
     def start_periodic_updates(self):
         """Start periodic updates for UI components"""

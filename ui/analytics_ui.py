@@ -66,7 +66,7 @@ class AnalyticsUI:
             col = (i % 3) * 2
             
             ttk.Label(stats_grid, text=f"{label}:", font=("Arial", 9, "bold")).grid(row=row, column=col, sticky=tk.W, padx=(0, 10), pady=5)
-            label_widget = ttk.Label(stats_grid, text=value, font=("Arial", 9), foreground="blue")
+            label_widget = ttk.Label(stats_grid, text=value, font=("Arial", 9), foreground="#6B46C1")
             label_widget.grid(row=row, column=col+1, sticky=tk.W, padx=(0, 20), pady=5)
             self.analytics_stats_labels[label] = label_widget
         

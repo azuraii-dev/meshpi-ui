@@ -72,9 +72,9 @@ class EmergencyUI:
                                                  command=self.activate_emergency_beacon)
         self.emergency_beacon_button.grid(row=0, column=0, padx=(0, 10))
         
-        ttk.Button(button_frame, text="😱 PANIC BUTTON", command=self.activate_panic_button).grid(row=0, column=1, padx=(0, 10))
-        ttk.Button(button_frame, text="📤 SEND MESSAGE", command=self.send_emergency_message).grid(row=0, column=2, padx=(0, 10))
-        ttk.Button(button_frame, text="🟢 CANCEL", command=self.cancel_emergency).grid(row=0, column=3)
+        ttk.Button(button_frame, text="PANIC BUTTON", command=self.activate_panic_button).grid(row=0, column=1, padx=(0, 10))
+        ttk.Button(button_frame, text="SEND MESSAGE", command=self.send_emergency_message).grid(row=0, column=2, padx=(0, 10))
+        ttk.Button(button_frame, text="CANCEL", command=self.cancel_emergency).grid(row=0, column=3)
         
         # Emergency Contacts Section (Left Pane)
         contacts_frame = ttk.LabelFrame(left_pane, text="Emergency Contacts", padding="10")
@@ -370,7 +370,7 @@ class EmergencyUI:
                     
                     if self.interface_manager.is_connected():
                         # Send cancellation message
-                        cancel_msg = "🟢 EMERGENCY CANCELLED - All clear"
+                        cancel_msg = "EMERGENCY CANCELLED - All clear"
                         self.interface_manager.send_message(cancel_msg, destination="^all", want_ack=True)
                         
                         # Notify emergency contacts
