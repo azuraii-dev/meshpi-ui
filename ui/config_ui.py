@@ -50,35 +50,26 @@ class ConfigUI:
         self.load_managed_devices()
         
     def create_widgets(self):
-        """Create configuration tab"""
-        # Configure grid
+        """Create configuration tab with dual-pane layout"""
+        # Configure main grid
         self.parent.columnconfigure(0, weight=1)
+        self.parent.columnconfigure(1, weight=1)
         self.parent.rowconfigure(0, weight=1)
         
-        # Create scrollable content with better performance
-        config_canvas = tk.Canvas(self.parent, highlightthickness=0)
-        config_scrollbar = ttk.Scrollbar(self.parent, orient="vertical", command=config_canvas.yview)
-        config_content = ttk.Frame(config_canvas)
+        # Create left and right panes
+        left_pane = ttk.Frame(self.parent, padding="5")
+        left_pane.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        left_pane.columnconfigure(0, weight=1)
         
-        # Optimize scrolling performance
-        def on_canvas_configure(event):
-            config_canvas.configure(scrollregion=config_canvas.bbox("all"))
+        right_pane = ttk.Frame(self.parent, padding="5")
+        right_pane.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
+        right_pane.columnconfigure(0, weight=1)
         
-        def on_mousewheel(event):
-            config_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        
-        config_content.bind('<Configure>', on_canvas_configure)
-        config_canvas.bind("<MouseWheel>", on_mousewheel)
-        
-        config_canvas.create_window((0, 0), window=config_content, anchor="nw")
-        config_canvas.configure(yscrollcommand=config_scrollbar.set)
-        
-        config_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        config_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        # === LEFT PANE ===
         
         # Device information
-        device_frame = ttk.LabelFrame(config_content, text="Device Information", padding="10")
-        device_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        device_frame = ttk.LabelFrame(left_pane, text="Device Information", padding="10")
+        device_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
         device_frame.columnconfigure(1, weight=1)
         
         # Device info labels
@@ -92,8 +83,8 @@ class ConfigUI:
             self.device_info_labels[field] = label
         
         # Node settings
-        node_frame = ttk.LabelFrame(config_content, text="Node Settings", padding="10")
-        node_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        node_frame = ttk.LabelFrame(left_pane, text="Node Settings", padding="10")
+        node_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
         node_frame.columnconfigure(1, weight=1)
         
         # Long name
@@ -110,8 +101,8 @@ class ConfigUI:
         ttk.Button(node_frame, text="Update Node Info", command=self.update_node_info).grid(row=2, column=0, columnspan=2, pady=10)
         
         # Region settings
-        region_frame = ttk.LabelFrame(config_content, text="Region Settings", padding="10")
-        region_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        region_frame = ttk.LabelFrame(left_pane, text="Region Settings", padding="10")
+        region_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5)
         region_frame.columnconfigure(1, weight=1)
         
         # Region selection
@@ -134,8 +125,8 @@ class ConfigUI:
         ttk.Button(region_frame, text="Update Region", command=self.update_region).grid(row=2, column=0, columnspan=2, pady=10)
         
         # Channel settings
-        channel_frame = ttk.LabelFrame(config_content, text="Channel Settings", padding="10")
-        channel_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        channel_frame = ttk.LabelFrame(left_pane, text="Channel Settings", padding="10")
+        channel_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5)
         channel_frame.columnconfigure(1, weight=1)
         
         # Channel name
@@ -149,17 +140,19 @@ class ConfigUI:
         ttk.Entry(channel_frame, textvariable=self.psk_var, width=30, show="*").grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=2)
         
         # Power settings
-        power_frame = ttk.LabelFrame(config_content, text="Power Settings", padding="10")
-        power_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        power_frame = ttk.LabelFrame(left_pane, text="Power Settings", padding="10")
+        power_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
         
         # Battery level display
         ttk.Label(power_frame, text="Battery Level:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.battery_label = ttk.Label(power_frame, text="N/A", foreground="gray")
         self.battery_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=2)
         
+        # === RIGHT PANE ===
+        
         # GPS settings
-        gps_frame = ttk.LabelFrame(config_content, text="GPS Settings", padding="10")
-        gps_frame.grid(row=5, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        gps_frame = ttk.LabelFrame(right_pane, text="GPS Settings", padding="10")
+        gps_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
         gps_frame.columnconfigure(1, weight=1)
         
         # GPS status display
@@ -202,8 +195,8 @@ class ConfigUI:
         gps_info_label.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=5)
         
         # Actions frame
-        actions_frame = ttk.LabelFrame(config_content, text="Actions", padding="10")
-        actions_frame.grid(row=6, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        actions_frame = ttk.LabelFrame(right_pane, text="Actions", padding="10")
+        actions_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
         
         # Action buttons
         ttk.Button(actions_frame, text="Reboot Device", command=self.reboot_device).grid(row=0, column=0, padx=5, pady=2)
@@ -211,8 +204,8 @@ class ConfigUI:
         ttk.Button(actions_frame, text="Get Device Info", command=self.get_device_info).grid(row=0, column=2, padx=5, pady=2)
         
         # Configuration Profiles Section
-        profiles_frame = ttk.LabelFrame(config_content, text="Configuration Profiles", padding="10")
-        profiles_frame.grid(row=7, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        profiles_frame = ttk.LabelFrame(right_pane, text="Configuration Profiles", padding="10")
+        profiles_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5)
         profiles_frame.columnconfigure(1, weight=1)
         
         # Current profile display
@@ -243,8 +236,8 @@ class ConfigUI:
         ttk.Button(profile_buttons, text="Import Profile", command=self.import_config_profile).grid(row=0, column=4)
         
         # Multi-Device Management Section
-        devices_frame = ttk.LabelFrame(config_content, text="Multi-Device Management", padding="10")
-        devices_frame.grid(row=8, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        devices_frame = ttk.LabelFrame(right_pane, text="Multi-Device Management", padding="10")
+        devices_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
         devices_frame.columnconfigure(0, weight=1)
         devices_frame.rowconfigure(0, weight=1)
         

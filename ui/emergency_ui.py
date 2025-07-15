@@ -26,28 +26,32 @@ class EmergencyUI:
         self.load_medical_info()
         self.refresh_emergency_events()
         
+        # Refresh available nodes
+        self.refresh_available_nodes()
+        
     def create_widgets(self):
-        """Create emergency features tab"""
-        # Configure grid
+        """Create emergency features tab with dual-pane layout"""
+        # Configure main grid
         self.parent.columnconfigure(0, weight=1)
+        self.parent.columnconfigure(1, weight=1)
         self.parent.rowconfigure(0, weight=1)
         
-        # Create scrollable content
-        emergency_canvas = tk.Canvas(self.parent)
-        emergency_scrollbar = ttk.Scrollbar(self.parent, orient="vertical", command=emergency_canvas.yview)
-        emergency_content = ttk.Frame(emergency_canvas)
+        # Create left and right panes
+        left_pane = ttk.Frame(self.parent, padding="5")
+        left_pane.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
+        left_pane.columnconfigure(0, weight=1)
+        left_pane.rowconfigure(1, weight=1)  # Make contacts section expandable
         
-        emergency_content.bind('<Configure>', lambda e: emergency_canvas.configure(scrollregion=emergency_canvas.bbox("all")))
+        right_pane = ttk.Frame(self.parent, padding="5")
+        right_pane.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
+        right_pane.columnconfigure(0, weight=1)
+        right_pane.rowconfigure(1, weight=1)  # Make events section expandable
         
-        emergency_canvas.create_window((0, 0), window=emergency_content, anchor="nw")
-        emergency_canvas.configure(yscrollcommand=emergency_scrollbar.set)
-        
-        emergency_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        emergency_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        # === LEFT PANE ===
         
         # Emergency Beacon Section
-        beacon_frame = ttk.LabelFrame(emergency_content, text="Emergency Beacon", padding="10")
-        beacon_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        beacon_frame = ttk.LabelFrame(left_pane, text="Emergency Beacon", padding="10")
+        beacon_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
         beacon_frame.columnconfigure(1, weight=1)
         
         # Emergency status
@@ -72,45 +76,69 @@ class EmergencyUI:
         ttk.Button(button_frame, text="📤 SEND MESSAGE", command=self.send_emergency_message).grid(row=0, column=2, padx=(0, 10))
         ttk.Button(button_frame, text="🟢 CANCEL", command=self.cancel_emergency).grid(row=0, column=3)
         
-        # Emergency Contacts Section
-        contacts_frame = ttk.LabelFrame(emergency_content, text="Emergency Contacts", padding="10")
-        contacts_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        # Emergency Contacts Section (Left Pane)
+        contacts_frame = ttk.LabelFrame(left_pane, text="Emergency Contacts", padding="10")
+        contacts_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(5, 0))
         contacts_frame.columnconfigure(0, weight=1)
+        contacts_frame.rowconfigure(0, weight=1)  # Make the treeview expandable
         
         # Contacts list
         contacts_list_frame = ttk.Frame(contacts_frame)
-        contacts_list_frame.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        contacts_list_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         contacts_list_frame.columnconfigure(0, weight=1)
+        contacts_list_frame.rowconfigure(0, weight=1)
         
-        self.emergency_contacts_tree = ttk.Treeview(contacts_list_frame, columns=("name", "node_id", "priority"), show="headings", height=6)
+        self.emergency_contacts_tree = ttk.Treeview(contacts_list_frame, columns=("name", "node_id", "priority"), show="headings", height=8)
         self.emergency_contacts_tree.heading("name", text="Name")
         self.emergency_contacts_tree.heading("node_id", text="Node ID")
         self.emergency_contacts_tree.heading("priority", text="Priority")
         
-        self.emergency_contacts_tree.column("name", width=150)
-        self.emergency_contacts_tree.column("node_id", width=100)
-        self.emergency_contacts_tree.column("priority", width=80)
+        self.emergency_contacts_tree.column("name", width=120)
+        self.emergency_contacts_tree.column("node_id", width=80)
+        self.emergency_contacts_tree.column("priority", width=70)
         
-        self.emergency_contacts_tree.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        self.emergency_contacts_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Add contact form
         add_contact_frame = ttk.Frame(contacts_frame)
         add_contact_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=10)
         add_contact_frame.columnconfigure(1, weight=1)
         
-        ttk.Label(add_contact_frame, text="Name:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(add_contact_frame, text="Select Node:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        
+        # Node selection frame
+        node_select_frame = ttk.Frame(add_contact_frame)
+        node_select_frame.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=2)
+        node_select_frame.columnconfigure(0, weight=1)
+        
+        self.available_nodes_var = tk.StringVar()
+        self.available_nodes_combo = ttk.Combobox(node_select_frame, textvariable=self.available_nodes_var, 
+                                                 state="readonly", width=25)
+        self.available_nodes_combo.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        self.available_nodes_combo.bind('<<ComboboxSelected>>', self.on_node_selected)
+        
+        ttk.Button(node_select_frame, text="Refresh", command=self.refresh_available_nodes, width=8).grid(row=0, column=1)
+        
+        ttk.Label(add_contact_frame, text="Contact Name:").grid(row=1, column=0, sticky=tk.W, pady=2)
         self.contact_name_var = tk.StringVar()
-        ttk.Entry(add_contact_frame, textvariable=self.contact_name_var, width=20).grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=2)
+        ttk.Entry(add_contact_frame, textvariable=self.contact_name_var, width=20).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=2)
         
-        ttk.Label(add_contact_frame, text="Node ID:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(add_contact_frame, text="Node ID:").grid(row=2, column=0, sticky=tk.W, pady=2)
         self.contact_node_var = tk.StringVar()
-        ttk.Entry(add_contact_frame, textvariable=self.contact_node_var, width=20).grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=2)
+        node_id_entry = ttk.Entry(add_contact_frame, textvariable=self.contact_node_var, width=20, state="readonly")
+        node_id_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=2)
         
-        ttk.Label(add_contact_frame, text="Priority:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Label(add_contact_frame, text="Priority:").grid(row=3, column=0, sticky=tk.W, pady=2)
         self.contact_priority_var = tk.StringVar(value="Normal")
         priority_combo = ttk.Combobox(add_contact_frame, textvariable=self.contact_priority_var, 
                                      values=["High", "Normal", "Low"], state="readonly", width=10)
-        priority_combo.grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=2)
+        priority_combo.grid(row=3, column=1, sticky=tk.W, padx=(10, 0), pady=2)
+        
+        # Help text
+        help_text = ttk.Label(add_contact_frame, 
+                             text="Select a node from the dropdown above. Nodes appear as you receive messages from them.",
+                             foreground="gray", font=("Arial", 8))
+        help_text.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=5)
         
         # Contact buttons
         contact_buttons = ttk.Frame(contacts_frame)
@@ -119,12 +147,14 @@ class EmergencyUI:
         ttk.Button(contact_buttons, text="Add Contact", command=self.add_emergency_contact).grid(row=0, column=0, padx=(0, 10))
         ttk.Button(contact_buttons, text="Remove Contact", command=self.remove_emergency_contact).grid(row=0, column=1)
         
-        # Medical Information Section
-        medical_frame = ttk.LabelFrame(emergency_content, text="Medical Information", padding="10")
-        medical_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        # === RIGHT PANE ===
+        
+        # Medical Information Section (Right Pane)
+        medical_frame = ttk.LabelFrame(right_pane, text="Medical Information", padding="10")
+        medical_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
         medical_frame.columnconfigure(1, weight=1)
         
-        # Medical info fields
+        # Medical info fields - organized in a more compact layout
         medical_fields = [
             ("blood_type", "Blood Type"),
             ("allergies", "Allergies"),
@@ -135,43 +165,49 @@ class EmergencyUI:
         ]
         
         for i, (field_key, field_label) in enumerate(medical_fields):
-            ttk.Label(medical_frame, text=f"{field_label}:").grid(row=i, column=0, sticky=tk.W, pady=2)
+            ttk.Label(medical_frame, text=f"{field_label}:").grid(row=i, column=0, sticky=tk.W, pady=1)
             var = tk.StringVar()
             self.medical_info_vars[field_key] = var
-            ttk.Entry(medical_frame, textvariable=var, width=40).grid(row=i, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=2)
+            ttk.Entry(medical_frame, textvariable=var, width=30).grid(row=i, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=1)
         
         # Medical buttons
         medical_buttons = ttk.Frame(medical_frame)
-        medical_buttons.grid(row=len(medical_fields), column=0, columnspan=2, pady=10)
+        medical_buttons.grid(row=len(medical_fields), column=0, columnspan=2, pady=8)
         
         ttk.Button(medical_buttons, text="Save Medical Info", command=self.save_medical_info).grid(row=0, column=0, padx=(0, 10))
         ttk.Button(medical_buttons, text="Include in Emergency", command=self.include_medical_in_emergency).grid(row=0, column=1)
         
-        # Emergency Events History
-        events_frame = ttk.LabelFrame(emergency_content, text="Emergency Events", padding="10")
-        events_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), padx=10, pady=5)
+        # Emergency Events History (Right Pane)
+        events_frame = ttk.LabelFrame(right_pane, text="Emergency Events", padding="10")
+        events_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(5, 0))
         events_frame.columnconfigure(0, weight=1)
+        events_frame.rowconfigure(0, weight=1)  # Make the treeview expandable
         
         # Events list
-        self.emergency_events_tree = ttk.Treeview(events_frame, columns=("timestamp", "type", "node", "status"), show="headings", height=6)
+        events_list_frame = ttk.Frame(events_frame)
+        events_list_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        events_list_frame.columnconfigure(0, weight=1)
+        events_list_frame.rowconfigure(0, weight=1)
+        
+        self.emergency_events_tree = ttk.Treeview(events_list_frame, columns=("timestamp", "type", "node", "status"), show="headings", height=8)
         self.emergency_events_tree.heading("timestamp", text="Timestamp")
         self.emergency_events_tree.heading("type", text="Type")
         self.emergency_events_tree.heading("node", text="Node")
         self.emergency_events_tree.heading("status", text="Status")
         
-        self.emergency_events_tree.column("timestamp", width=150)
-        self.emergency_events_tree.column("type", width=100)
-        self.emergency_events_tree.column("node", width=100)
-        self.emergency_events_tree.column("status", width=80)
+        self.emergency_events_tree.column("timestamp", width=120)
+        self.emergency_events_tree.column("type", width=80)
+        self.emergency_events_tree.column("node", width=80)
+        self.emergency_events_tree.column("status", width=70)
         
-        self.emergency_events_tree.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        self.emergency_events_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Events buttons
         events_buttons = ttk.Frame(events_frame)
-        events_buttons.grid(row=1, column=0, pady=10)
+        events_buttons.grid(row=1, column=0, pady=8)
         
-        ttk.Button(events_buttons, text="Refresh Events", command=self.refresh_emergency_events).grid(row=0, column=0, padx=(0, 10))
-        ttk.Button(events_buttons, text="Acknowledge", command=self.acknowledge_emergency_event).grid(row=0, column=1, padx=(0, 10))
+        ttk.Button(events_buttons, text="Refresh Events", command=self.refresh_emergency_events).grid(row=0, column=0, padx=(0, 8))
+        ttk.Button(events_buttons, text="Acknowledge", command=self.acknowledge_emergency_event).grid(row=0, column=1, padx=(0, 8))
         ttk.Button(events_buttons, text="Clear History", command=self.clear_emergency_history).grid(row=0, column=2)
         
     def get_local_device_position(self):
@@ -670,4 +706,77 @@ class EmergencyUI:
                 
         except Exception as e:
             logger.error(f"Error clearing emergency history: {e}")
-            messagebox.showerror("Error", f"Failed to clear emergency history: {e}") 
+            messagebox.showerror("Error", f"Failed to clear emergency history: {e}")
+    
+    def refresh_available_nodes(self):
+        """Refresh the list of available nodes for emergency contacts"""
+        try:
+            if not self.interface_manager.is_connected():
+                self.available_nodes_combo['values'] = ["No nodes available - Please connect to device"]
+                return
+            
+            # Get available nodes from interface manager
+            nodes = self.interface_manager.get_nodes()
+            
+            if not nodes:
+                self.available_nodes_combo['values'] = ["No nodes found - Try sending/receiving messages first"]
+                return
+            
+            # Format nodes for display: "NodeName (NodeID)"
+            node_options = []
+            for node_id, node_data in nodes.items():
+                try:
+                    # Get node name from user data
+                    if 'user' in node_data and node_data['user']:
+                        user_data = node_data['user']
+                        if 'longName' in user_data and user_data['longName']:
+                            node_name = user_data['longName']
+                        elif 'shortName' in user_data and user_data['shortName']:
+                            node_name = user_data['shortName']
+                        else:
+                            node_name = f"Node {node_id}"
+                    else:
+                        node_name = f"Node {node_id}"
+                    
+                    # Format as "Name (ID)"
+                    display_text = f"{node_name} ({node_id})"
+                    node_options.append(display_text)
+                    
+                except Exception as e:
+                    logger.debug(f"Error processing node {node_id}: {e}")
+                    # Fallback to just node ID
+                    node_options.append(f"Node {node_id} ({node_id})")
+            
+            # Sort the options
+            node_options.sort()
+            
+            # Update combobox
+            self.available_nodes_combo['values'] = node_options
+            
+            logger.info(f"Refreshed available nodes: {len(node_options)} nodes found")
+            
+        except Exception as e:
+            logger.error(f"Error refreshing available nodes: {e}")
+            self.available_nodes_combo['values'] = ["Error loading nodes - Check connection"]
+    
+    def on_node_selected(self, event=None):
+        """Handle node selection from dropdown"""
+        try:
+            selected = self.available_nodes_var.get()
+            if not selected or "(" not in selected:
+                return
+            
+            # Extract node ID from "NodeName (NodeID)" format
+            node_id = selected.split("(")[-1].rstrip(")")
+            
+            # Extract node name
+            node_name = selected.split(" (")[0]
+            
+            # Auto-fill the contact name and node ID fields
+            self.contact_name_var.set(node_name)
+            self.contact_node_var.set(node_id)
+            
+            logger.debug(f"Selected node: {node_name} with ID: {node_id}")
+            
+        except Exception as e:
+            logger.error(f"Error handling node selection: {e}") 
