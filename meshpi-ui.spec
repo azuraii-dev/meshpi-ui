@@ -51,12 +51,6 @@ hiddenimports = [
 
 # Optional dependencies (graceful degradation)
 optional_imports = [
-    'matplotlib',
-    'matplotlib.pyplot',
-    'matplotlib.figure',
-    'matplotlib.backends.backend_tkagg',
-    'matplotlib.dates',
-    'matplotlib.ticker',
     'numpy',
     'tkintermapview',
 ]
@@ -169,7 +163,7 @@ exe = EXE(
     a.datas,
     [],
     name=exe_name,
-    debug=False,
+    debug=True,  # Enable debug mode for troubleshooting
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,  # Compress executable
@@ -177,7 +171,7 @@ exe = EXE(
     runtime_tmpdir=None,
     console=console,
     disable_windowed_traceback=False,
-    argv_emulation=False,
+    argv_emulation=False,  # Critical: Keep this False for macOS
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
@@ -203,5 +197,9 @@ if platform.startswith('darwin'):
             'NSHumanReadableCopyright': 'Copyright © 2024',
             'LSMinimumSystemVersion': '10.9.0',
             'NSRequiresAquaSystemAppearance': False,  # Support dark mode
+            'LSApplicationCategoryType': 'public.app-category.utilities',
+            'NSPrincipalClass': 'NSApplication',  # Ensure proper app initialization
+            'NSMainNibFile': '',  # Prevent NIB file loading issues
+            'LSUIElement': False,  # Explicitly show in dock (opposite of background app)
         },
     ) 

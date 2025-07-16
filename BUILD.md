@@ -181,7 +181,7 @@ When running as an executable, your data is stored in OS-appropriate user direct
 ### Finding Your Data
 Run this utility to see exactly where your data is stored:
 ```bash
-python show_data_location.py
+python scripts/show_data_location.py
 ```
 
 ### Backup Your Data

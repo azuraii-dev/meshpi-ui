@@ -1,27 +1,17 @@
-meshtastic>=2.6.0
+meshtastic>=2.3.0
+Pillow>=10.0.0
 tkintermapview>=1.29
-requests>=2.32.0
-matplotlib>=3.7.0
+requests>=2.31.0
 
-# The meshtastic library already includes all necessary dependencies:
-# - bleak (for Bluetooth LE interface)
-# - pypubsub (for publish-subscribe messaging)
-# - pyserial (for serial interface)
-# - protobuf (for protocol buffers)
-# - pyyaml (for YAML configuration)
-# - tabulate (for table formatting)
-# - packaging (for version handling)
+# Optional dependencies (comment out if not needed)
+# - meshtastic (for device communication)
+# - Pillow (for image processing and icons)
+# - tkintermapview (for map functionality)
+# - requests (for IP geolocation)
 
-# UI and visualization functionality:
-# - tkintermapview (real map with OpenStreetMap tiles and offline caching)
-# - requests (for internet connectivity checking)
-# - matplotlib (for analytics charts and graphs)
+# Development/Build dependencies
+# - pyinstaller (for creating executables)
+# - auto-py-to-exe (GUI for pyinstaller)
 
-# Standard library modules used (no installation needed):
-# - tkinter (GUI framework)
-# - threading (concurrent processing)
-# - queue (thread-safe communication)
-# - json (JSON handling)
-# - datetime (date/time handling)
-# - logging (logging functionality)
-# - time (time utilities) 
+# Note: This is a minimal requirements file for the core functionality.
+# Additional dependencies may be needed for specific features. 

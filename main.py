@@ -11,6 +11,8 @@ import threading
 import time
 import queue
 import os
+import sys
+import platform
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,7 +24,7 @@ from data.database import DataLogger
 from ui.map_ui import MapUI
 from ui.chat_ui import ChatUI
 from ui.network_ui import NetworkUI
-from ui.analytics_ui import AnalyticsUI
+
 from ui.emergency_ui import EmergencyUI
 from ui.config_ui import ConfigUI
 
@@ -38,6 +40,11 @@ class MeshtasticApp:
     
     def __init__(self, root):
         self.root = root
+        
+        # Apply macOS-specific fixes for PyInstaller windowed app issues
+        if platform.system() == "Darwin":
+            self.apply_macos_fixes()
+        
         self.root.title(f"Meshtastic UI")
         self.root.geometry("1200x800")
         
@@ -100,6 +107,43 @@ class MeshtasticApp:
         # Start event processing and periodic updates
         self.start_event_processing()
         self.start_periodic_updates()
+        
+    def apply_macos_fixes(self):
+        """Apply macOS-specific fixes for PyInstaller issues"""
+        try:
+            # Debug logging for macOS issues
+            logger.info("Applying macOS PyInstaller fixes...")
+            
+            # Schedule window fixes after a short delay to let the app initialize
+            self.root.after(100, self.fix_macos_window_display)
+            
+            # Ensure proper focus handling
+            self.root.after(200, lambda: self.root.focus_force())
+            
+            # Force window to front
+            self.root.after(300, lambda: self.root.lift())
+            
+        except Exception as e:
+            logger.warning(f"Could not apply macOS fixes: {e}")
+    
+    def fix_macos_window_display(self):
+        """Fix macOS window display issues commonly seen with PyInstaller"""
+        try:
+            # This is a known workaround for macOS PyInstaller apps
+            # that appear in dock but don't show the window properly
+            logger.debug("Applying macOS window display fix...")
+            
+            # Temporary iconify/deiconify cycle to force proper window display
+            self.root.iconify()
+            self.root.update()
+            self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
+            
+            logger.debug("macOS window display fix applied")
+            
+        except Exception as e:
+            logger.warning(f"Could not apply window display fix: {e}")
         
     def setup_ui(self):
         """Setup the main UI components"""
