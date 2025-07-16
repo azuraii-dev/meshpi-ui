@@ -51,7 +51,6 @@ hiddenimports = [
 
 # Optional dependencies (graceful degradation)
 optional_imports = [
-    'numpy',
     'tkintermapview',
 ]
 

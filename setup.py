@@ -268,7 +268,6 @@ optional_imports = [
     'matplotlib.backends.backend_tkagg',
     'matplotlib.dates',
     'matplotlib.ticker',
-    'numpy',
     'tkintermapview',
 ]
 

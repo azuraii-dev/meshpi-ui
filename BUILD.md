@@ -95,7 +95,6 @@ To reduce executable size, edit `meshpi-ui.spec` and add to `excludes`:
 ```python
 excludes = [
     'matplotlib',  # If you don't need charts
-    'numpy',       # If not using analytics
     # ... other unused modules
 ]
 ```
