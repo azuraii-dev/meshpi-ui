@@ -52,9 +52,9 @@ class MeshtasticApp:
         try:
             # Try to load icon from different sources
             icon_paths = [
-                "icon.png",  # For development/Linux
-                "icon.ico",  # For Windows  
-                "assets/icon.png",  # Alternative location
+                "assets/icon.png",  # For development/Linux
+                "assets/icon.ico",  # For Windows  
+                "assets/icon.icns",  # For macOS
             ]
             
             for icon_path in icon_paths:

@@ -122,25 +122,25 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 if platform.startswith('win'):
     exe_name = 'MeshtasticUI.exe'
     console = False  # Hide console window
-    icon = os.path.abspath('icon.ico')  # Use absolute path
+    icon = os.path.abspath('assets/icon.ico')  # Use absolute path
 elif platform.startswith('darwin'):
     exe_name = 'MeshtasticUI'
     console = False
-    icon = os.path.abspath('icon.icns')  # Use absolute path
+    icon = os.path.abspath('assets/icon.icns')  # Use absolute path
 else:  # Linux
     exe_name = 'MeshtasticUI'
     console = False
-    icon = os.path.abspath('icon.png')  # Use absolute path
+    icon = os.path.abspath('assets/icon.png')  # Use absolute path
 
 # Check if icon exists, otherwise don't use it
 if not os.path.exists(icon):
     icon = None
-    print(f"❌ Warning: Icon file not found: {icon}")
+    print(f"[ERROR] Warning: Icon file not found: {icon}")
 else:
     icon_size = os.path.getsize(icon)
-    print(f"✅ Using icon: {icon} (size: {icon_size} bytes)")
+    print(f"[OK] Using icon: {icon} (size: {icon_size} bytes)")
     if icon_size < 5000:
-        print(f"⚠️  Warning: Icon file seems small ({icon_size} bytes) - may be low quality")
+        print(f"[WARNING] Icon file seems small ({icon_size} bytes) - may be low quality")
     
     # Also try to validate it's a proper ICO file
     if icon.endswith('.ico'):
@@ -148,12 +148,12 @@ else:
             with open(icon, 'rb') as f:
                 header = f.read(6)
                 if header[:4] != b'\x00\x00\x01\x00':
-                    print(f"⚠️  Warning: {icon} doesn't appear to be a valid ICO file")
+                    print(f"[WARNING] {icon} doesn't appear to be a valid ICO file")
                 else:
                     icon_count = int.from_bytes(header[4:6], 'little')
-                    print(f"✅ ICO file contains {icon_count} icon sizes")
+                    print(f"[OK] ICO file contains {icon_count} icon sizes")
         except Exception as e:
-            print(f"⚠️  Could not validate ICO file: {e}")
+            print(f"[WARNING] Could not validate ICO file: {e}")
 
 exe = EXE(
     pyz,

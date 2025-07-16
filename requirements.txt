@@ -2,12 +2,14 @@ meshtastic>=2.3.0
 Pillow>=10.0.0
 tkintermapview>=1.29
 requests>=2.31.0
+parse>=1.19.0
 
 # Optional dependencies (comment out if not needed)
 # - meshtastic (for device communication)
 # - Pillow (for image processing and icons)
 # - tkintermapview (for map functionality)
 # - requests (for IP geolocation)
+# - parse (for parsing messages)
 
 # Development/Build dependencies
 # - pyinstaller (for creating executables)

@@ -343,13 +343,13 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
         'windows': {
             'exe_name': 'MeshtasticUI.exe',
             'console': False,
-            'icon': 'icon.ico',
+            'icon': 'assets/icon.ico',
             'bundle_section': ''
         },
         'macos': {
             'exe_name': 'MeshtasticUI',
             'console': False,
-            'icon': 'icon.icns',
+            'icon': 'assets/icon.icns',
             'bundle_section': '''
 # macOS specific: Create .app bundle
 app = BUNDLE(
@@ -372,7 +372,7 @@ app = BUNDLE(
         'linux': {
             'exe_name': 'MeshtasticUI',
             'console': False,
-            'icon': 'icon.png',
+            'icon': 'assets/icon.png',
             'bundle_section': ''
         }
     }
