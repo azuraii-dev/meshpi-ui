@@ -759,7 +759,7 @@ class ConfigUI:
             device_path = item['values'][2]
             
             # Notify the interface manager to connect
-            self.interface_manager.connect_to_device(device_type, device_path)
+            self.interface_manager.connect(device_type, device_path)
             
         except Exception as e:
             logger.error(f"Error connecting to selected device: {e}")

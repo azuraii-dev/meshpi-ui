@@ -68,7 +68,7 @@ class EmergencyUI:
         button_frame = ttk.Frame(beacon_frame)
         button_frame.grid(row=2, column=0, columnspan=2, pady=10)
         
-        self.emergency_beacon_button = ttk.Button(button_frame, text="🚨 EMERGENCY BEACON", 
+        self.emergency_beacon_button = ttk.Button(button_frame, text="EMERGENCY BEACON", 
                                                  command=self.activate_emergency_beacon)
         self.emergency_beacon_button.grid(row=0, column=0, padx=(0, 10))
         
@@ -245,7 +245,7 @@ class EmergencyUI:
                     lat, lon, name = local_position
                     
                     # Create emergency message with location
-                    emergency_msg = f"🚨 EMERGENCY BEACON ACTIVATED 🚨\n"
+                    emergency_msg = f"EMERGENCY BEACON ACTIVATED\n"
                     emergency_msg += f"Location: {lat:.6f}, {lon:.6f}\n"
                     emergency_msg += f"From: {name}\n"
                     emergency_msg += f"Message: {self.emergency_message_var.get()}\n"
@@ -259,8 +259,8 @@ class EmergencyUI:
                     
                     # Update UI
                     self.emergency_active = True
-                    self.emergency_status_label.config(text="🚨 EMERGENCY BEACON ACTIVE", foreground="red")
-                    self.emergency_beacon_button.config(text="🚨 BEACON ACTIVE", state="disabled")
+                    self.emergency_status_label.config(text="EMERGENCY BEACON ACTIVE", foreground="red")
+                    self.emergency_beacon_button.config(text="BEACON ACTIVE", state="disabled")
                     
                     # Send to emergency contacts
                     self.notify_emergency_contacts("EMERGENCY BEACON", emergency_msg)
@@ -268,7 +268,7 @@ class EmergencyUI:
                     messagebox.showinfo("Emergency Beacon", "Emergency beacon activated!\nLocation broadcasted to all nodes.")
                 else:
                     # No GPS available
-                    emergency_msg = f"🚨 EMERGENCY BEACON ACTIVATED 🚨\n"
+                    emergency_msg = f"EMERGENCY BEACON ACTIVATED\n"
                     emergency_msg += f"From: Local Device\n"
                     emergency_msg += f"Message: {self.emergency_message_var.get()}\n"
                     emergency_msg += f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
@@ -281,8 +281,8 @@ class EmergencyUI:
                     
                     # Update UI
                     self.emergency_active = True
-                    self.emergency_status_label.config(text="🚨 EMERGENCY BEACON ACTIVE", foreground="red")
-                    self.emergency_beacon_button.config(text="🚨 BEACON ACTIVE", state="disabled")
+                    self.emergency_status_label.config(text="EMERGENCY BEACON ACTIVE", foreground="red")
+                    self.emergency_beacon_button.config(text="BEACON ACTIVE", state="disabled")
                     
                     messagebox.showinfo("Emergency Beacon", "Emergency beacon activated!\nMessage broadcasted to all nodes.")
                     
@@ -307,7 +307,7 @@ class EmergencyUI:
                     lat, lon, name = local_position
                 
                 # Create silent emergency message
-                panic_msg = f"🚨 PANIC ALERT 🚨\n"
+                panic_msg = f"PANIC ALERT\n"
                 panic_msg += f"Silent emergency alert activated\n"
                 if lat and lon:
                     panic_msg += f"Location: {lat:.6f}, {lon:.6f}\n"
@@ -340,13 +340,13 @@ class EmergencyUI:
             # Send to all emergency contacts
             for contact in self.emergency_contacts:
                 try:
-                    self.interface_manager.send_message(f"🚨 EMERGENCY: {message}", 
+                    self.interface_manager.send_message(f"EMERGENCY: {message}", 
                                                       destination=contact['node_id'], want_ack=True)
                 except Exception as e:
                     logger.error(f"Failed to send emergency message to {contact['name']}: {e}")
             
             # Also broadcast
-            self.interface_manager.send_message(f"🚨 EMERGENCY: {message}", destination="^all", want_ack=True)
+            self.interface_manager.send_message(f"EMERGENCY: {message}", destination="^all", want_ack=True)
             
             # Log emergency event
             local_position = self.get_local_device_position()
@@ -379,7 +379,7 @@ class EmergencyUI:
                     # Reset UI
                     self.emergency_active = False
                     self.emergency_status_label.config(text="Emergency beacon inactive", foreground="gray")
-                    self.emergency_beacon_button.config(text="🚨 EMERGENCY BEACON", state="normal")
+                    self.emergency_beacon_button.config(text="EMERGENCY BEACON", state="normal")
                     
                     # Log cancellation
                     self.data_logger.log_emergency_event("LOCAL", "cancelled", None, None, "Emergency cancelled")
@@ -404,7 +404,7 @@ class EmergencyUI:
             
             for contact in sorted_contacts:
                 try:
-                    full_message = f"🚨 {event_type} 🚨\n{message}"
+                    full_message = f"{event_type}\n{message}"
                     self.interface_manager.send_message(full_message, destination=contact['node_id'], want_ack=True)
                     logger.info(f"Emergency notification sent to {contact['name']} ({contact['node_id']})")
                 except Exception as e:

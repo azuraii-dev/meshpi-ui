@@ -535,9 +535,9 @@ class MapUI:
                 
                 # Get battery info for local device
                 battery = "N/A"
-                if interface and hasattr(interface, 'getMyNodeInfo'):
+                if self.interface_manager.interface and hasattr(self.interface_manager.interface, 'getMyNodeInfo'):
                     try:
-                        node_info = interface.getMyNodeInfo()
+                        node_info = self.interface_manager.interface.getMyNodeInfo()
                         if node_info and 'deviceMetrics' in node_info:
                             device_metrics = node_info['deviceMetrics']
                             if 'batteryLevel' in device_metrics:
