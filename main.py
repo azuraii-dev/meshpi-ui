@@ -5,7 +5,9 @@ Features: Map view, Chat interface, Network topology, Analytics, Emergency, and 
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 import logging
 import threading
 import time
@@ -27,6 +29,7 @@ from ui.network_ui import NetworkUI
 
 from ui.emergency_ui import EmergencyUI
 from ui.config_ui import ConfigUI
+from ui.settings_ui import SettingsUI
 
 # Import path utilities for data location info
 try:
@@ -35,18 +38,36 @@ try:
 except ImportError:
     SHOW_DATA_PATHS = False
 
+# Import UI configuration
+try:
+    from utils.ui_config import get_ui_config
+    UI_CONFIG_AVAILABLE = True
+except ImportError:
+    UI_CONFIG_AVAILABLE = False
+    logger.warning("UI configuration not available")
+
 class MeshtasticApp:
     """Main application class for Meshtastic UI"""
     
     def __init__(self, root):
         self.root = root
         
+        # Load UI configuration
+        if UI_CONFIG_AVAILABLE:
+            self.ui_config = get_ui_config()
+            # Apply saved window settings
+            window_config = self.ui_config.get_window_config()
+            window_size = f"{window_config.get('width', 1200)}x{window_config.get('height', 800)}"
+        else:
+            self.ui_config = None
+            window_size = "1200x800"
+        
         # Apply macOS-specific fixes for PyInstaller windowed app issues
         if platform.system() == "Darwin":
             self.apply_macos_fixes()
         
         self.root.title(f"Meshtastic UI")
-        self.root.geometry("1200x800")
+        self.root.geometry(window_size)
         
         # Set window icon (if available)
         try:
@@ -214,20 +235,23 @@ class MeshtasticApp:
         #analytics_frame = ttk.Frame(self.notebook)
         emergency_frame = ttk.Frame(self.notebook)
         config_frame = ttk.Frame(self.notebook)
+        settings_frame = ttk.Frame(self.notebook)
         
         # Add tabs to notebook
-        self.notebook.add(map_frame, text="Map")
-        self.notebook.add(chat_frame, text="Chat")
+        self.notebook.add(map_frame, text="🗺️ Map")
+        self.notebook.add(chat_frame, text="💬 Chat")
         #self.notebook.add(network_frame, text="Network")
         #self.notebook.add(analytics_frame, text="Analytics")
-        self.notebook.add(emergency_frame, text="Emergency")
-        self.notebook.add(config_frame, text="Config")
+        self.notebook.add(emergency_frame, text="🚨 Emergency")
+        self.notebook.add(config_frame, text="⚙️ Config")
+        self.notebook.add(settings_frame, text="🎨 Settings")
         
         # Initialize UI modules with the correct parent frames
         self.map_ui = MapUI(map_frame, self.interface_manager, self.data_logger)
         self.chat_ui = ChatUI(chat_frame, self.interface_manager, self.data_logger)
         self.emergency_ui = EmergencyUI(emergency_frame, self.interface_manager, self.data_logger)
         self.config_ui = ConfigUI(config_frame, self.interface_manager, self.data_logger)
+        self.settings_ui = SettingsUI(settings_frame, self.ui_config, self.change_theme)
         
         # Set disabled UI components to None for proper handling
         self.network_ui = None
@@ -490,12 +514,67 @@ class MeshtasticApp:
             
         # Start the update loop
         self.root.after(1000, update_loop)  # First update after 1 second
+        
+    def change_theme(self, theme_name: str):
+        """Change the application theme"""
+        try:
+            if hasattr(self.root, 'style'):
+                self.root.style.theme_use(theme_name)
+                logger.info(f"Theme changed to: {theme_name}")
+                
+                # Save theme preference
+                if self.ui_config:
+                    self.ui_config.set_theme(theme_name)
+                    
+            else:
+                logger.warning("Theme change not supported - restart required")
+                messagebox.showinfo("Theme Change", 
+                                  f"Theme will change to '{theme_name}' on next restart.")
+                
+        except Exception as e:
+            logger.error(f"Error changing theme: {e}")
+            messagebox.showwarning("Theme Error", 
+                                 f"Could not apply theme '{theme_name}'. The theme will be applied on next restart.")
 
 def main():
     """Main application entry point"""
-    root = tk.Tk()
+    logger.info("Starting Meshtastic UI...")
+    
+    # Load theme from configuration
+    theme_name = "darkly"  # default
+    if UI_CONFIG_AVAILABLE:
+        try:
+            ui_config = get_ui_config()
+            theme_name = ui_config.get_theme()
+            logger.info(f"Using theme: {theme_name}")
+        except Exception as e:
+            logger.warning(f"Error loading theme config: {e}")
+    
+    # Create ttkbootstrap window with theme
+    root = ttk.Window(themename=theme_name)
     app = MeshtasticApp(root)
-    root.mainloop()
+    
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        logger.info("Application interrupted by user")
+    except Exception as e:
+        logger.error(f"Application error: {e}")
+        messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+    finally:
+        # Save window settings on exit
+        if UI_CONFIG_AVAILABLE and hasattr(app, 'ui_config') and app.ui_config:
+            try:
+                # Save current window size if remember_size is enabled
+                if app.ui_config.get('window.remember_size', True):
+                    width = root.winfo_width()
+                    height = root.winfo_height()
+                    if width > 100 and height > 100:  # Sanity check
+                        app.ui_config.set_window_config(width=width, height=height)
+            except Exception as e:
+                logger.debug(f"Error saving window settings: {e}")
+        
+        logger.info("Meshtastic UI shutting down")
 
 if __name__ == "__main__":
     main() 
