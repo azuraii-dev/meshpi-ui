@@ -93,7 +93,7 @@ main.py (4,417 lines) - EVERYTHING in one file!
 
 ### **After**: Clean modular structure
 ```
-meshpy-ui/
+meshpi-ui/
 ├── main_new.py (575 lines) - Clean entry point
 ├── data/
 │   ├── database.py - Optimized DB with pooling

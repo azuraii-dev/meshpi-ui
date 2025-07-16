@@ -129,8 +129,8 @@ def build_executable():
             return False
     
     # Check if spec file exists
-    if not os.path.exists("meshpy-ui.spec"):
-        print("Spec file not found. Please ensure meshpy-ui.spec exists.")
+    if not os.path.exists("meshpi-ui.spec"):
+        print("Spec file not found. Please ensure meshpi-ui.spec exists.")
         return False
     
     # Clean previous builds
@@ -148,7 +148,7 @@ def build_executable():
     print("This may take several minutes...")
     
     # Run PyInstaller
-    pyinstaller_cmd = f"{python_cmd} -m PyInstaller meshpy-ui.spec"
+    pyinstaller_cmd = f"{python_cmd} -m PyInstaller meshpi-ui.spec"
     print(f"Running: {pyinstaller_cmd}")
     
     success, stdout, stderr = run_command(pyinstaller_cmd)
@@ -338,7 +338,7 @@ app = BUNDLE(
     exe,
     name='MeshtasticUI.app',
     icon=icon if os.path.exists(icon or '') else None,
-    bundle_identifier='com.meshpy.ui',
+    bundle_identifier='com.meshpi.ui',
     info_plist={{
         'CFBundleName': 'Meshtastic UI',
         'CFBundleDisplayName': 'Meshtastic UI',
@@ -395,7 +395,7 @@ exe = EXE(
             bundle_section=config['bundle_section']
         )
         
-        spec_filename = f"meshpy-ui-{platform_name}.spec"
+        spec_filename = f"meshpi-ui-{platform_name}.spec"
         with open(spec_filename, 'w') as f:
             f.write(spec_content)
         
@@ -430,7 +430,7 @@ RUN pip install --no-cache-dir pyinstaller
 COPY . .
 
 # Build the executable
-RUN python -m PyInstaller meshpy-ui-linux.spec
+RUN python -m PyInstaller meshpi-ui-linux.spec
 
 # Create output directory
 RUN mkdir -p /output
@@ -499,17 +499,17 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            spec: meshpy-ui-windows.spec
+            spec: meshpi-ui-windows.spec
             artifact: MeshtasticUI.exe
             
           - os: ubuntu-latest
             platform: linux
-            spec: meshpy-ui-linux.spec
+            spec: meshpi-ui-linux.spec
             artifact: MeshtasticUI
             
           - os: macos-latest
             platform: macos
-            spec: meshpy-ui-macos.spec
+            spec: meshpi-ui-macos.spec
             artifact: MeshtasticUI.app
 
     runs-on: ${{ matrix.os }}
@@ -591,22 +591,22 @@ def build_all_platforms():
     
     # Build for current platform
     print(f"\nBuilding for current platform ({current_platform})...")
-    spec_file = f"meshpy-ui-{current_platform}.spec"
+    spec_file = f"meshpi-ui-{current_platform}.spec"
     
     if os.path.exists(spec_file):
         # Temporarily rename the current spec file
-        if os.path.exists("meshpy-ui.spec"):
-            shutil.move("meshpy-ui.spec", "meshpy-ui-original.spec")
-        shutil.copy(spec_file, "meshpy-ui.spec")
+        if os.path.exists("meshpi-ui.spec"):
+            shutil.move("meshpi-ui.spec", "meshpi-ui-original.spec")
+        shutil.copy(spec_file, "meshpi-ui.spec")
         
         # Build for current platform
         success = build_executable()
         
         # Restore original spec file
-        if os.path.exists("meshpy-ui-original.spec"):
-            shutil.move("meshpy-ui-original.spec", "meshpy-ui.spec")
+        if os.path.exists("meshpi-ui-original.spec"):
+            shutil.move("meshpi-ui-original.spec", "meshpi-ui.spec")
         else:
-            os.remove("meshpy-ui.spec")
+            os.remove("meshpi-ui.spec")
         
         if not success:
             return False
@@ -620,9 +620,9 @@ def build_all_platforms():
     print(f"✓ Executable built for {current_platform}")
     
     print("\nFILES CREATED:")
-    print("- meshpy-ui-windows.spec")
-    print("- meshpy-ui-macos.spec") 
-    print("- meshpy-ui-linux.spec")
+    print("- meshpi-ui-windows.spec")
+    print("- meshpi-ui-macos.spec") 
+    print("- meshpi-ui-linux.spec")
     print("- Dockerfile.linux")
     print("- docker-compose.build.yml")
     print("- .github/workflows/build.yml")
@@ -638,7 +638,7 @@ def build_all_platforms():
     
     print("\n3. For manual builds on other platforms:")
     print("   - Copy the project to Windows/macOS")
-    print("   - Run: python -m PyInstaller meshpy-ui-[platform].spec")
+    print("   - Run: python -m PyInstaller meshpi-ui-[platform].spec")
     
     return True
 

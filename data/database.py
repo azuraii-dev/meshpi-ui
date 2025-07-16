@@ -41,7 +41,7 @@ class DataLogger:
             logger.info(f"Database path: {self.db_path}")
         else:
             # Fallback to provided path or default
-            self.db_path = db_path or "database/meshpy_data.db"
+            self.db_path = db_path or "database/meshpi_data.db"
             # Ensure directory exists for fallback
             import os
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)

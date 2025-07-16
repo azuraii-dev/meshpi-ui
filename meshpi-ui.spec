@@ -171,7 +171,7 @@ if platform.startswith('darwin'):
         exe,
         name='MeshtasticUI.app',
         icon=icon,
-        bundle_identifier='com.meshpy.ui',
+        bundle_identifier='com.meshpi.ui',
         info_plist={
             'CFBundleName': 'Meshtastic UI',
             'CFBundleDisplayName': 'Meshtastic UI',

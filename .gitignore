@@ -143,9 +143,9 @@ dist-*/
 *.msi
 
 # Platform-specific spec files (generated)
-meshpy-ui-windows.spec
-meshpy-ui-macos.spec
-meshpy-ui-linux.spec
+meshpi-ui-windows.spec
+meshpi-ui-macos.spec
+meshpi-ui-linux.spec
 
 # Docker build files (generated)
 Dockerfile.linux

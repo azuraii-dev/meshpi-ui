@@ -1,4 +1,4 @@
-# MeshPy UI - Cross-Platform Meshtastic Interface
+# meshpi UI - Cross-Platform Meshtastic Interface
 
 A comprehensive, cross-platform interface for Meshtastic mesh networking devices with advanced features including real-time chat, network topology visualization, analytics, emergency features, and device configuration.
 
@@ -8,8 +8,8 @@ A comprehensive, cross-platform interface for Meshtastic mesh networking devices
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/meshpy-ui.git
-   cd meshpy-ui
+   git clone https://github.com/your-username/meshpi-ui.git
+   cd meshpi-ui
    ```
 
 2. **Run the setup script**:
@@ -77,7 +77,7 @@ python main.py
 The application follows a clean, organized structure:
 
 ```
-meshpy-ui/
+meshpi-ui/
 ├── main.py                 # Main application entry point
 ├── requirements.txt        # Python dependencies
 ├── .gitignore             # Git ignore rules
@@ -101,7 +101,7 @@ meshpy-ui/
 │   ├── networking.py              # Network utilities
 │   └── gps.py                     # GPS utilities
 ├── database/              # SQLite database files
-│   └── meshpy_data.db             # Main database (auto-created)
+│   └── meshpi_data.db             # Main database (auto-created)
 ├── exports/               # Export files (auto-created)
 │   ├── *.csv                      # Data exports
 │   ├── *.json                     # Configuration exports
@@ -207,8 +207,8 @@ The ConfigUI module provides comprehensive device configuration:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/meshpy-ui.git
-cd meshpy-ui
+git clone https://github.com/yourusername/meshpi-ui.git
+cd meshpi-ui
 
 # Install dependencies
 pip install -r requirements.txt

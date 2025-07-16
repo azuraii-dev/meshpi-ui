@@ -94,7 +94,7 @@ def main():
     print(f"\nBACKUP YOUR DATA:")
     print("-" * 30)
     print(f"  Copy this entire folder: {paths['data']}")
-    print(f"  Important files: meshpy_data.db (your message/node history)")
+    print(f"  Important files: meshpi_data.db (your message/node history)")
     
     print("=" * 60)
 

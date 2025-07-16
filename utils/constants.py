@@ -7,7 +7,7 @@ Constants used throughout the Meshtastic UI application
 APP_VERSION = "2.0.0"
 
 # Database configuration
-DEFAULT_DB_NAME = "database/meshpy_data.db"
+DEFAULT_DB_NAME = "database/meshpi_data.db"
 
 # Map configuration
 DEFAULT_MAP_ZOOM = 10

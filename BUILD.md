@@ -61,7 +61,7 @@ The build system automatically includes:
 1. **Checks virtual environment** - Creates if missing
 2. **Installs PyInstaller** - If not already present
 3. **Cleans previous builds** - Removes old `dist/` and `build/` folders
-4. **Analyzes dependencies** - Using `meshpy-ui.spec` configuration
+4. **Analyzes dependencies** - Using `meshpi-ui.spec` configuration
 5. **Builds executable** - Packages everything into standalone app
 6. **Reports results** - Shows file location and size
 
@@ -74,7 +74,7 @@ Place platform-specific icons in the root directory:
 - `icon.png` - Linux icon
 
 ### Build Configuration
-Edit `meshpy-ui.spec` to customize:
+Edit `meshpi-ui.spec` to customize:
 - Hidden imports
 - Excluded modules (for smaller file size)
 - Data files to include
@@ -91,7 +91,7 @@ venv/bin/pip install MODULE_NAME      # macOS/Linux
 ```
 
 ### Large File Size
-To reduce executable size, edit `meshpy-ui.spec` and add to `excludes`:
+To reduce executable size, edit `meshpi-ui.spec` and add to `excludes`:
 ```python
 excludes = [
     'matplotlib',  # If you don't need charts
@@ -173,7 +173,7 @@ When running as an executable, your data is stored in OS-appropriate user direct
 - **Access**: File manager or `cd ~/.local/share/MeshtasticUI`
 
 ### What's Stored
-- **Database**: `meshpy_data.db` (messages, nodes, analytics)
+- **Database**: `meshpi_data.db` (messages, nodes, analytics)
 - **Logs**: Application logs and error reports
 - **Config**: User preferences and settings
 - **Exports**: Any exported data files
@@ -188,7 +188,7 @@ python show_data_location.py
 To backup your Meshtastic UI data:
 1. Locate your data directory (see above)
 2. Copy the entire `MeshtasticUI` folder
-3. The database file `meshpy_data.db` contains all your important data
+3. The database file `meshpi_data.db` contains all your important data
 
 ### Development vs Executable
 - **Development**: Data stored in local `database/` folder
@@ -204,9 +204,9 @@ python setup.py build --all
 ```
 
 **Generated Files:**
-- `meshpy-ui-windows.spec` - Windows build configuration
-- `meshpy-ui-macos.spec` - macOS build configuration  
-- `meshpy-ui-linux.spec` - Linux build configuration
+- `meshpi-ui-windows.spec` - Windows build configuration
+- `meshpi-ui-macos.spec` - macOS build configuration  
+- `meshpi-ui-linux.spec` - Linux build configuration
 - `Dockerfile.linux` - Docker configuration for Linux builds
 - `docker-compose.build.yml` - Easy Docker commands
 - `.github/workflows/build.yml` - GitHub Actions for automated builds
@@ -234,9 +234,9 @@ docker-compose -f docker-compose.build.yml up build-linux
 1. Copy project to Windows/macOS/Linux machine
 2. Run platform-specific build:
    ```bash
-   python -m PyInstaller meshpy-ui-windows.spec  # On Windows
-   python -m PyInstaller meshpy-ui-macos.spec    # On macOS  
-   python -m PyInstaller meshpy-ui-linux.spec    # On Linux
+   python -m PyInstaller meshpi-ui-windows.spec  # On Windows
+   python -m PyInstaller meshpi-ui-macos.spec    # On macOS  
+   python -m PyInstaller meshpi-ui-linux.spec    # On Linux
    ```
 
 ### Build Matrix

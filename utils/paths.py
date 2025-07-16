@@ -82,7 +82,7 @@ def get_data_directory():
 
 def get_database_path():
     """Get the full path to the database file"""
-    return get_data_directory() / "meshpy_data.db"
+    return get_data_directory() / "meshpi_data.db"
 
 def get_logs_directory():
     """Get the directory where log files should be stored"""

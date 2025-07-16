@@ -55,7 +55,7 @@ except ImportError as e:
 class DataLogger:
     """Handles all data logging and historical data storage"""
     
-    def __init__(self, db_path="meshpy_data.db"):
+    def __init__(self, db_path="meshpi_data.db"):
         self.db_path = db_path
         self.init_database()
         
