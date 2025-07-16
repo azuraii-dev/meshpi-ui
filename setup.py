@@ -136,9 +136,27 @@ def build_executable():
     # Clean previous builds
     if os.path.exists("dist"):
         print("Cleaning previous build...")
-        shutil.rmtree("dist")
+        try:
+            shutil.rmtree("dist")
+        except PermissionError as e:
+            print(f"⚠️  Warning: Could not remove dist directory: {e}")
+            print("This usually means MeshtasticUI.exe is still running.")
+            print("Please:")
+            print("  1. Close any running MeshtasticUI.exe processes")
+            print("  2. Wait a moment for file locks to release")
+            print("  3. Try the build again")
+            print("\nAlternatively, manually delete the 'dist' folder and retry.")
+            return False
+        except Exception as e:
+            print(f"⚠️  Warning: Error removing dist directory: {e}")
+            print("Continuing with build...")
+    
     if os.path.exists("build"):
-        shutil.rmtree("build")
+        try:
+            shutil.rmtree("build")
+        except Exception as e:
+            print(f"⚠️  Warning: Could not remove build directory: {e}")
+            print("Continuing with build...")
     
     # Get platform info
     platform_name = detect_platform()
