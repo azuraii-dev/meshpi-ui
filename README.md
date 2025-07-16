@@ -42,7 +42,7 @@ python3 setup.py build
 
 - Python 3.8+
 - Meshtastic device (any supported hardware)
-- Internet connection (for maps and setup)
+- Internet connection (optional for maps)
 
 ## 🛠️ Development
 
