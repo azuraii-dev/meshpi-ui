@@ -24,8 +24,6 @@ python3 setup.py build
 
 - 🗺️ **Interactive Maps** - Real-time node positioning with multiple tile layers
 - 💬 **Mesh Chat** - Message history, search, and status tracking
-- 🌐 **Network Topology** - Visual network graph with signal strength
-- 📊 **Analytics** - Battery trends, connectivity charts, and network health
 - 🚨 **Emergency** - Beacon broadcasts and panic button with emergency contacts
 - ⚙️ **Configuration** - Device settings, profiles, and multi-device management
 
@@ -39,7 +37,6 @@ python3 setup.py build
 
 - **Serial** - USB/UART connections (auto-detection)
 - **TCP** - Network connections to devices
-- **Bluetooth** - Wireless device connections
 
 ## 📋 Requirements
 
@@ -57,14 +54,10 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-## 📖 Documentation
-
-See `docs/` folder for detailed documentation and advanced features.
-
 ## 🐛 Issues & Support
 
-Please report issues on GitHub or join the Meshtastic Discord community.
+Please report issues on GitHub
 
 ---
 
-**Built with ❤️ for the Meshtastic community** 
+**Built 100% with AI** 
