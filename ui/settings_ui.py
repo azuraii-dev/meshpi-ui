@@ -10,6 +10,12 @@ from tkinter import messagebox, filedialog
 import logging
 from typing import Optional, Callable
 
+# Import the responsive UI utilities
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.responsive_ui import create_responsive_tab
+
 logger = logging.getLogger(__name__)
 
 class SettingsUI:
@@ -44,30 +50,31 @@ class SettingsUI:
         self.setup_change_handlers()
         
     def load_settings(self):
-        """Load current settings from UI config"""
+        """Load current settings from configuration"""
         if not self.ui_config:
             return
             
         try:
-            # Theme settings
-            self.theme_var.set(self.ui_config.get_theme())
+            # Load theme
+            current_theme = self.ui_config.get_theme()
+            self.theme_var.set(current_theme)
             
-            # Interface settings
+            # Load interface settings
             self.auto_refresh_var.set(self.ui_config.get('interface.auto_refresh', True))
             self.refresh_interval_var.set(self.ui_config.get('interface.refresh_interval', 5000))
             self.show_tooltips_var.set(self.ui_config.get('interface.show_tooltips', True))
             self.compact_mode_var.set(self.ui_config.get('interface.compact_mode', False))
             self.show_debug_var.set(self.ui_config.get('interface.show_debug_info', False))
             
-            # Window settings
+            # Load window settings
             self.remember_size_var.set(self.ui_config.get('window.remember_size', True))
             
-            # Notification settings
+            # Load notification settings
             self.show_connection_status_var.set(self.ui_config.get('notifications.show_connection_status', True))
             self.show_message_notifications_var.set(self.ui_config.get('notifications.show_message_notifications', True))
             self.sound_enabled_var.set(self.ui_config.get('notifications.sound_enabled', False))
             
-            # Chat settings
+            # Load chat settings
             self.message_history_limit_var.set(self.ui_config.get('chat.message_history_limit', 100))
             self.auto_scroll_var.set(self.ui_config.get('chat.auto_scroll', True))
             self.show_timestamps_var.set(self.ui_config.get('chat.show_timestamps', True))
@@ -77,14 +84,10 @@ class SettingsUI:
             logger.error(f"Error loading UI settings: {e}")
             
     def create_widgets(self):
-        """Create the settings interface"""
-        # Configure grid
-        self.parent.columnconfigure(0, weight=1)
-        self.parent.rowconfigure(0, weight=1)
-        
-        # Create scrollable frame
-        main_frame = ttk.Frame(self.parent, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        """Create the settings interface with responsive container"""
+        # Create responsive container
+        self.responsive_container = create_responsive_tab(self.parent, padding="10")
+        main_frame = self.responsive_container.get_content_frame()
         main_frame.columnconfigure(0, weight=1)
         
         # Theme Settings Section
@@ -105,27 +108,26 @@ class SettingsUI:
         # Action Buttons
         self.create_action_buttons(main_frame, 5)
         
+        # Force scroll check after content is created
+        self.parent.after_idle(self.responsive_container.force_scroll_check)
+        
     def create_theme_section(self, parent, row):
         """Create theme selection section"""
-        theme_frame = ttk.LabelFrame(parent, text="🎨 Theme Settings", padding="10")
+        theme_frame = ttk.LabelFrame(parent, text="Theme Settings", padding="10")
         theme_frame.grid(row=row, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         theme_frame.columnconfigure(1, weight=1)
         
         # Theme selection
-        ttk.Label(theme_frame, text="Theme:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(theme_frame, text="Current Theme:").grid(row=0, column=0, sticky=tk.W, pady=2)
         
-        # Get available themes
         if self.ui_config:
-            themes = self.ui_config.get_available_themes()
-            theme_names = list(themes.keys())
-            theme_display = [f"{themes[name]['name']} ({themes[name]['type']})" for name in theme_names]
+            available_themes = list(self.ui_config.get_available_themes().keys())
         else:
-            theme_names = ["darkly", "flatly", "cosmo"]
-            theme_display = theme_names
+            available_themes = ["darkly", "flatly", "cosmo"]
             
-        self.theme_combo = ttk.Combobox(theme_frame, textvariable=self.theme_var,
-                                       values=theme_names, state="readonly", width=20)
-        self.theme_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 0), pady=2)
+        self.theme_combo = ttk.Combobox(theme_frame, textvariable=self.theme_var, 
+                                       values=available_themes, state="readonly")
+        self.theme_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 10), pady=2)
         
         # Theme preview button
         preview_btn = ttk.Button(theme_frame, text="Preview Theme", 
@@ -138,7 +140,7 @@ class SettingsUI:
         
     def create_interface_section(self, parent, row):
         """Create interface settings section"""
-        interface_frame = ttk.LabelFrame(parent, text="⚙️ Interface Settings", padding="10")
+        interface_frame = ttk.LabelFrame(parent, text="Interface Settings", padding="10")
         interface_frame.grid(row=row, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         interface_frame.columnconfigure(1, weight=1)
         
@@ -148,15 +150,15 @@ class SettingsUI:
         
         # Refresh interval
         ttk.Label(interface_frame, text="Refresh interval (ms):").grid(row=1, column=0, sticky=tk.W, pady=2)
-        refresh_spinbox = ttk.Spinbox(interface_frame, from_=1000, to=30000, increment=1000,
-                                     textvariable=self.refresh_interval_var, width=10)
-        refresh_spinbox.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=2)
+        interval_spinbox = ttk.Spinbox(interface_frame, from_=1000, to=30000, increment=1000,
+                                      textvariable=self.refresh_interval_var, width=10)
+        interval_spinbox.grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=2)
         
         # Other interface options
         ttk.Checkbutton(interface_frame, text="Show tooltips", 
                        variable=self.show_tooltips_var).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=2)
         
-        ttk.Checkbutton(interface_frame, text="Compact mode (smaller spacing)", 
+        ttk.Checkbutton(interface_frame, text="Compact mode", 
                        variable=self.compact_mode_var).grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=2)
         
         ttk.Checkbutton(interface_frame, text="Show debug information", 
@@ -164,18 +166,20 @@ class SettingsUI:
         
     def create_window_section(self, parent, row):
         """Create window settings section"""
-        window_frame = ttk.LabelFrame(parent, text="🪟 Window Settings", padding="10")
+        window_frame = ttk.LabelFrame(parent, text="Window Settings", padding="10")
         window_frame.grid(row=row, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        ttk.Checkbutton(window_frame, text="Remember window size and position", 
+        # Window options
+        ttk.Checkbutton(window_frame, text="Remember window size", 
                        variable=self.remember_size_var).grid(row=0, column=0, sticky=tk.W, pady=2)
         
     def create_notification_section(self, parent, row):
         """Create notification settings section"""
-        notif_frame = ttk.LabelFrame(parent, text="🔔 Notification Settings", padding="10")
+        notif_frame = ttk.LabelFrame(parent, text="Notification Settings", padding="10")
         notif_frame.grid(row=row, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        ttk.Checkbutton(notif_frame, text="Show connection status changes", 
+        # Notification options
+        ttk.Checkbutton(notif_frame, text="Show connection status notifications", 
                        variable=self.show_connection_status_var).grid(row=0, column=0, sticky=tk.W, pady=2)
         
         ttk.Checkbutton(notif_frame, text="Show message notifications", 
@@ -186,7 +190,7 @@ class SettingsUI:
         
     def create_chat_section(self, parent, row):
         """Create chat settings section"""
-        chat_frame = ttk.LabelFrame(parent, text="💬 Chat Settings", padding="10")
+        chat_frame = ttk.LabelFrame(parent, text="Chat Settings", padding="10")
         chat_frame.grid(row=row, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         chat_frame.columnconfigure(1, weight=1)
         
@@ -209,40 +213,41 @@ class SettingsUI:
     def create_action_buttons(self, parent, row):
         """Create action buttons section"""
         button_frame = ttk.Frame(parent)
-        button_frame.grid(row=row, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        button_frame.grid(row=row, column=0, pady=(20, 0))
         
-        # Apply button
-        apply_btn = ttk.Button(button_frame, text="Apply Settings", 
-                              command=self.apply_settings, bootstyle="success")
-        apply_btn.pack(side="left", padx=(0, 10))
+        ttk.Button(button_frame, text="Apply Settings", command=self.apply_settings, 
+                  bootstyle="success").grid(row=0, column=0, padx=(0, 10))
         
-        # Reset to defaults
-        reset_btn = ttk.Button(button_frame, text="Reset to Defaults", 
-                              command=self.reset_to_defaults, bootstyle="warning-outline")
-        reset_btn.pack(side="left", padx=(0, 10))
+        ttk.Button(button_frame, text="Reset to Defaults", command=self.reset_settings, 
+                  bootstyle="warning").grid(row=0, column=1, padx=(0, 10))
         
-        # Export/Import
-        export_btn = ttk.Button(button_frame, text="Export Settings", 
-                               command=self.export_settings, bootstyle="info-outline")
-        export_btn.pack(side="left", padx=(0, 10))
+        ttk.Button(button_frame, text="Export Settings", command=self.export_settings, 
+                  bootstyle="info-outline").grid(row=0, column=2, padx=(0, 10))
         
-        import_btn = ttk.Button(button_frame, text="Import Settings", 
-                               command=self.import_settings, bootstyle="info-outline")
-        import_btn.pack(side="left")
+        ttk.Button(button_frame, text="Import Settings", command=self.import_settings, 
+                  bootstyle="secondary-outline").grid(row=0, column=3)
         
     def setup_change_handlers(self):
         """Setup handlers for immediate setting changes"""
-        # Theme changes
-        self.theme_var.trace('w', self.on_theme_change)
+        # Theme changes - handle both old and new tkinter API
+        try:
+            # Try new API first (Python 3.8+)
+            self.theme_var.trace_add('write', self.on_theme_change)
+        except AttributeError:
+            # Fall back to old API (Python < 3.8)
+            self.theme_var.trace('w', self.on_theme_change)
         
     def on_theme_change(self, *args):
         """Handle theme selection change"""
-        if self.ui_config:
-            theme_name = self.theme_var.get()
-            theme_info = self.ui_config.get_theme_info(theme_name)
-            if theme_info:
-                description = f"{theme_info.get('description', '')} ({theme_info.get('type', 'unknown')} theme)"
-                self.theme_description.config(text=description)
+        try:
+            if self.ui_config:
+                theme_name = self.theme_var.get()
+                theme_info = self.ui_config.get_theme_info(theme_name)
+                if theme_info:
+                    description = f"{theme_info.get('description', '')} ({theme_info.get('type', 'unknown')} theme)"
+                    self.theme_description.config(text=description)
+        except Exception as e:
+            logger.debug(f"Error updating theme description: {e}")
                 
     def preview_theme(self):
         """Preview the selected theme"""
@@ -256,15 +261,29 @@ class SettingsUI:
             return
             
         try:
-            # Apply theme immediately
+            # Apply theme immediately with improved error handling
             if self.theme_change_callback:
-                self.theme_change_callback(theme_name)
+                # Temporarily disable the combobox to prevent conflicts
+                self.theme_combo.configure(state="disabled")
+                
+                # Use after_idle to ensure UI updates are processed
+                self.parent.after_idle(lambda: self._apply_theme_safely(theme_name))
             else:
                 messagebox.showinfo("Preview", f"Theme '{theme_name}' would be applied.\nRestart to see changes.")
                 
         except Exception as e:
             logger.error(f"Error previewing theme: {e}")
             messagebox.showerror("Error", f"Failed to preview theme: {e}")
+            
+    def _apply_theme_safely(self, theme_name):
+        """Apply theme safely with proper error handling"""
+        try:
+            self.theme_change_callback(theme_name)
+            # Re-enable the combobox after a short delay
+            self.parent.after(500, lambda: self.theme_combo.configure(state="readonly"))
+        except Exception as e:
+            logger.error(f"Error applying theme safely: {e}")
+            self.theme_combo.configure(state="readonly")  # Re-enable even on error
             
     def apply_settings(self):
         """Apply all settings"""
@@ -304,56 +323,61 @@ class SettingsUI:
             
             # Apply theme if callback is available
             if self.theme_change_callback and theme_name:
-                self.theme_change_callback(theme_name)
+                self._apply_theme_safely(theme_name)
                 
-            messagebox.showinfo("Settings Applied", "Settings have been applied successfully!\n\nSome changes may require a restart to take full effect.")
+            messagebox.showinfo("Settings Applied", "Settings have been applied successfully!")
             
         except Exception as e:
             logger.error(f"Error applying settings: {e}")
             messagebox.showerror("Error", f"Failed to apply settings: {e}")
             
-    def reset_to_defaults(self):
+    def reset_settings(self):
         """Reset all settings to defaults"""
-        if messagebox.askyesno("Reset Settings", "Are you sure you want to reset all settings to defaults?"):
-            if self.ui_config:
-                self.ui_config.reset_to_defaults()
-                self.load_settings()  # Reload the UI
-                messagebox.showinfo("Settings Reset", "Settings have been reset to defaults.")
-            else:
-                messagebox.showwarning("Warning", "UI configuration not available")
+        result = messagebox.askyesno("Reset Settings", 
+                                   "Are you sure you want to reset all settings to defaults?\n\n"
+                                   "This action cannot be undone.")
+        
+        if result:
+            try:
+                if self.ui_config:
+                    self.ui_config.reset_to_defaults()
+                    self.load_settings()  # Reload the UI with defaults
+                    messagebox.showinfo("Reset Complete", "Settings have been reset to defaults.")
+                    
+            except Exception as e:
+                logger.error(f"Error resetting settings: {e}")
+                messagebox.showerror("Error", f"Failed to reset settings: {e}")
                 
     def export_settings(self):
-        """Export settings to a file"""
-        if not self.ui_config:
-            messagebox.showwarning("Warning", "UI configuration not available")
-            return
+        """Export current settings to a file"""
+        try:
+            filename = filedialog.asksaveasfilename(
+                title="Export UI Settings",
+                defaultextension=".json",
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+            )
             
-        file_path = filedialog.asksaveasfilename(
-            title="Export UI Settings",
-            defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if file_path:
-            if self.ui_config.export_config(file_path):
-                messagebox.showinfo("Export Successful", f"Settings exported to {file_path}")
-            else:
-                messagebox.showerror("Export Failed", "Failed to export settings")
+            if filename and self.ui_config:
+                self.ui_config.export_config(filename)
+                messagebox.showinfo("Export Complete", f"Settings exported to:\n{filename}")
                 
+        except Exception as e:
+            logger.error(f"Error exporting settings: {e}")
+            messagebox.showerror("Export Error", f"Failed to export settings: {e}")
+            
     def import_settings(self):
         """Import settings from a file"""
-        if not self.ui_config:
-            messagebox.showwarning("Warning", "UI configuration not available")
-            return
+        try:
+            filename = filedialog.askopenfilename(
+                title="Import UI Settings",
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+            )
             
-        file_path = filedialog.askopenfilename(
-            title="Import UI Settings",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if file_path:
-            if self.ui_config.import_config(file_path):
-                self.load_settings()  # Reload the UI
-                messagebox.showinfo("Import Successful", f"Settings imported from {file_path}\n\nRestart the application to apply all changes.")
-            else:
-                messagebox.showerror("Import Failed", "Failed to import settings") 
+            if filename and self.ui_config:
+                self.ui_config.import_config(filename)
+                self.load_settings()  # Reload the UI with imported settings
+                messagebox.showinfo("Import Complete", f"Settings imported from:\n{filename}")
+                
+        except Exception as e:
+            logger.error(f"Error importing settings: {e}")
+            messagebox.showerror("Import Error", f"Failed to import settings: {e}") 

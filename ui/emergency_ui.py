@@ -4,6 +4,12 @@ import json
 import sqlite3
 import logging
 from datetime import datetime
+import sys
+import os
+
+# Import the responsive UI utilities
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.responsive_ui import create_responsive_tab
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +36,23 @@ class EmergencyUI:
         self.refresh_available_nodes()
         
     def create_widgets(self):
-        """Create emergency features tab with dual-pane layout"""
-        # Configure main grid
-        self.parent.columnconfigure(0, weight=1)
-        self.parent.columnconfigure(1, weight=1)
-        self.parent.rowconfigure(0, weight=1)
+        """Create emergency features tab with responsive dual-pane layout"""
+        # Create responsive container
+        self.responsive_container = create_responsive_tab(self.parent, padding="5")
+        main_frame = self.responsive_container.get_content_frame()
+        
+        # Configure dual-pane grid
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(0, weight=1)
         
         # Create left and right panes
-        left_pane = ttk.Frame(self.parent, padding="5")
+        left_pane = ttk.Frame(main_frame, padding="5")
         left_pane.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
         left_pane.columnconfigure(0, weight=1)
         left_pane.rowconfigure(1, weight=1)  # Make contacts section expandable
         
-        right_pane = ttk.Frame(self.parent, padding="5")
+        right_pane = ttk.Frame(main_frame, padding="5")
         right_pane.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
         right_pane.columnconfigure(0, weight=1)
         right_pane.rowconfigure(1, weight=1)  # Make events section expandable
@@ -209,6 +219,9 @@ class EmergencyUI:
         ttk.Button(events_buttons, text="Refresh Events", command=self.refresh_emergency_events).grid(row=0, column=0, padx=(0, 8))
         ttk.Button(events_buttons, text="Acknowledge", command=self.acknowledge_emergency_event).grid(row=0, column=1, padx=(0, 8))
         ttk.Button(events_buttons, text="Clear History", command=self.clear_emergency_history).grid(row=0, column=2)
+        
+        # Force scroll check after content is created
+        self.parent.after_idle(self.responsive_container.force_scroll_check)
         
     def get_local_device_position(self):
         """Get the GPS position of the local device if available"""

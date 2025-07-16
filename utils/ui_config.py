@@ -72,8 +72,8 @@ class UIConfigManager:
         else:
             # Use application data directory
             try:
-                from utils.paths import get_config_path
-                self.config_file = get_config_path() / "ui_config.json"
+                from utils.paths import get_config_dir
+                self.config_file = get_config_dir() / "ui_config.json"
             except ImportError:
                 # Fallback to local directory
                 self.config_file = Path("ui_config.json")

@@ -4,6 +4,12 @@ import json
 import sqlite3
 import logging
 from datetime import datetime
+import sys
+import os
+
+# Import the responsive UI utilities
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.responsive_ui import create_responsive_tab
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +56,22 @@ class ConfigUI:
         self.load_managed_devices()
         
     def create_widgets(self):
-        """Create configuration tab with dual-pane layout"""
-        # Configure main grid
-        self.parent.columnconfigure(0, weight=1)
-        self.parent.columnconfigure(1, weight=1)
-        self.parent.rowconfigure(0, weight=1)
+        """Create configuration tab with responsive dual-pane layout"""
+        # Create responsive container
+        self.responsive_container = create_responsive_tab(self.parent, padding="5")
+        main_frame = self.responsive_container.get_content_frame()
+        
+        # Configure dual-pane grid
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(0, weight=1)
         
         # Create left and right panes
-        left_pane = ttk.Frame(self.parent, padding="5")
+        left_pane = ttk.Frame(main_frame, padding="5")
         left_pane.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 5))
         left_pane.columnconfigure(0, weight=1)
         
-        right_pane = ttk.Frame(self.parent, padding="5")
+        right_pane = ttk.Frame(main_frame, padding="5")
         right_pane.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
         right_pane.columnconfigure(0, weight=1)
         
@@ -277,6 +287,9 @@ class ConfigUI:
         
         # Initial device scan
         self.scan_devices()
+        
+        # Force scroll check after content is created
+        self.parent.after_idle(self.responsive_container.force_scroll_check)
         
     def get_device_info(self):
         """Get device information"""

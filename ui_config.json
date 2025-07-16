@@ -1,0 +1,27 @@
+{
+  "theme": "darkly",
+  "window": {
+    "width": 1200,
+    "height": 800,
+    "maximized": false,
+    "remember_size": true
+  },
+  "interface": {
+    "show_tooltips": true,
+    "auto_refresh": true,
+    "refresh_interval": 5000,
+    "show_debug_info": false,
+    "compact_mode": false
+  },
+  "notifications": {
+    "show_connection_status": true,
+    "show_message_notifications": true,
+    "sound_enabled": false
+  },
+  "chat": {
+    "message_history_limit": 100,
+    "auto_scroll": true,
+    "show_timestamps": true,
+    "show_node_ids": false
+  }
+}

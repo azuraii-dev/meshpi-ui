@@ -238,13 +238,13 @@ class MeshtasticApp:
         settings_frame = ttk.Frame(self.notebook)
         
         # Add tabs to notebook
-        self.notebook.add(map_frame, text="🗺️ Map")
-        self.notebook.add(chat_frame, text="💬 Chat")
+        self.notebook.add(map_frame, text="Map")
+        self.notebook.add(chat_frame, text="Chat")
         #self.notebook.add(network_frame, text="Network")
         #self.notebook.add(analytics_frame, text="Analytics")
-        self.notebook.add(emergency_frame, text="🚨 Emergency")
-        self.notebook.add(config_frame, text="⚙️ Config")
-        self.notebook.add(settings_frame, text="🎨 Settings")
+        self.notebook.add(emergency_frame, text="Emergency")
+        self.notebook.add(config_frame, text="Config")
+        self.notebook.add(settings_frame, text="Settings")
         
         # Initialize UI modules with the correct parent frames
         self.map_ui = MapUI(map_frame, self.interface_manager, self.data_logger)
@@ -528,13 +528,10 @@ class MeshtasticApp:
                     
             else:
                 logger.warning("Theme change not supported - restart required")
-                messagebox.showinfo("Theme Change", 
-                                  f"Theme will change to '{theme_name}' on next restart.")
                 
         except Exception as e:
             logger.error(f"Error changing theme: {e}")
-            messagebox.showwarning("Theme Error", 
-                                 f"Could not apply theme '{theme_name}'. The theme will be applied on next restart.")
+            # Don't show error popup for theme changes - just log it
 
 def main():
     """Main application entry point"""
