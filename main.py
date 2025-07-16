@@ -10,6 +10,7 @@ import logging
 import threading
 import time
 import queue
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -39,6 +40,34 @@ class MeshtasticApp:
         self.root = root
         self.root.title(f"Meshtastic UI")
         self.root.geometry("1200x800")
+        
+        # Set window icon (if available)
+        try:
+            # Try to load icon from different sources
+            icon_paths = [
+                "icon.png",  # For development/Linux
+                "icon.ico",  # For Windows  
+                "assets/icon.png",  # Alternative location
+            ]
+            
+            for icon_path in icon_paths:
+                if os.path.exists(icon_path):
+                    # For PNG/ICO files with PIL
+                    try:
+                        from PIL import Image, ImageTk
+                        image = Image.open(icon_path)
+                        # Resize to appropriate window icon size
+                        image = image.resize((32, 32), Image.Resampling.LANCZOS)
+                        photo = ImageTk.PhotoImage(image)
+                        self.root.iconphoto(True, photo)
+                        break
+                    except ImportError:
+                        # Fallback: use ICO directly on Windows
+                        if icon_path.endswith('.ico'):
+                            self.root.iconbitmap(icon_path)
+                            break
+        except Exception as e:
+            logger.debug(f"Could not set window icon: {e}")
         
         # Show data location info on startup
         if SHOW_DATA_PATHS:
