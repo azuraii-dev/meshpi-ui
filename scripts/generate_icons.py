@@ -32,7 +32,7 @@ def generate_ico(source_image, output_path):
     try:
         from PIL import Image
         
-        # ICO sizes (Windows standard)
+        # ICO sizes (Windows standard) - use fewer sizes for better compatibility
         sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
         
         # Open source image
@@ -46,13 +46,74 @@ def generate_ico(source_image, output_path):
             resized = img.resize(size, Image.Resampling.LANCZOS)
             images.append(resized)
         
-        # Save as ICO
-        images[0].save(output_path, format='ICO', sizes=[(img.width, img.height) for img in images])
-        print(f"✓ Generated Windows ICO: {output_path}")
-        return True
+        # Save as ICO with explicit format and sizes
+        # Use the main image for save and pass all images with their sizes
+        images[0].save(
+            output_path, 
+            format='ICO', 
+            append_images=images[1:],
+            sizes=[(w, h) for w, h in sizes]
+        )
+        
+        # Verify the file was created and has reasonable size
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
+            if file_size < 1000:  # Less than 1KB is probably an error
+                print(f"⚠️  Warning: ICO file seems too small ({file_size} bytes)")
+                # Try alternative method
+                return generate_ico_alternative(source_image, output_path)
+            else:
+                print(f"✓ Generated Windows ICO: {output_path} ({file_size} bytes)")
+                return True
+        else:
+            print("❌ ICO file was not created")
+            return False
         
     except Exception as e:
         print(f"❌ Failed to generate ICO: {e}")
+        print("Trying alternative ICO generation method...")
+        return generate_ico_alternative(source_image, output_path)
+
+def generate_ico_alternative(source_image, output_path):
+    """Alternative ICO generation method for better Windows compatibility"""
+    try:
+        from PIL import Image
+        import tempfile
+        
+        # Open source image
+        img = Image.open(source_image)
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+        
+        # Create individual PNG files for each size and combine them
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ico_sizes = [16, 24, 32, 48, 64, 128, 256]
+            temp_images = []
+            
+            for size in ico_sizes:
+                resized = img.resize((size, size), Image.Resampling.LANCZOS)
+                temp_path = os.path.join(temp_dir, f"icon_{size}.png")
+                resized.save(temp_path, 'PNG')
+                temp_images.append(Image.open(temp_path))
+            
+            # Save as ICO using the first image as base
+            temp_images[0].save(
+                output_path,
+                format='ICO',
+                append_images=temp_images[1:],
+                sizes=[(size, size) for size in ico_sizes]
+            )
+            
+            # Verify file
+            if os.path.exists(output_path):
+                file_size = os.path.getsize(output_path)
+                print(f"✓ Generated Windows ICO (alternative method): {output_path} ({file_size} bytes)")
+                return True
+            else:
+                return False
+                
+    except Exception as e:
+        print(f"❌ Alternative ICO generation also failed: {e}")
         return False
 
 def generate_icns(source_image, output_path):

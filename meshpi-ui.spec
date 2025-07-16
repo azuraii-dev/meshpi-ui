@@ -128,19 +128,22 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 if platform.startswith('win'):
     exe_name = 'MeshtasticUI.exe'
     console = False  # Hide console window
-    icon = 'icon.ico'  # Add icon if you have one
+    icon = os.path.abspath('icon.ico')  # Use absolute path
 elif platform.startswith('darwin'):
     exe_name = 'MeshtasticUI'
     console = False
-    icon = 'icon.icns'  # Add icon if you have one
+    icon = os.path.abspath('icon.icns')  # Use absolute path
 else:  # Linux
     exe_name = 'MeshtasticUI'
     console = False
-    icon = 'icon.png'  # Add icon if you have one
+    icon = os.path.abspath('icon.png')  # Use absolute path
 
 # Check if icon exists, otherwise don't use it
 if not os.path.exists(icon):
     icon = None
+    print(f"Warning: Icon file not found: {icon}")
+else:
+    print(f"Using icon: {icon} (size: {os.path.getsize(icon)} bytes)")
 
 exe = EXE(
     pyz,
