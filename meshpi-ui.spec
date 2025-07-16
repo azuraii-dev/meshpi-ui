@@ -141,9 +141,25 @@ else:  # Linux
 # Check if icon exists, otherwise don't use it
 if not os.path.exists(icon):
     icon = None
-    print(f"Warning: Icon file not found: {icon}")
+    print(f"❌ Warning: Icon file not found: {icon}")
 else:
-    print(f"Using icon: {icon} (size: {os.path.getsize(icon)} bytes)")
+    icon_size = os.path.getsize(icon)
+    print(f"✅ Using icon: {icon} (size: {icon_size} bytes)")
+    if icon_size < 5000:
+        print(f"⚠️  Warning: Icon file seems small ({icon_size} bytes) - may be low quality")
+    
+    # Also try to validate it's a proper ICO file
+    if icon.endswith('.ico'):
+        try:
+            with open(icon, 'rb') as f:
+                header = f.read(6)
+                if header[:4] != b'\x00\x00\x01\x00':
+                    print(f"⚠️  Warning: {icon} doesn't appear to be a valid ICO file")
+                else:
+                    icon_count = int.from_bytes(header[4:6], 'little')
+                    print(f"✅ ICO file contains {icon_count} icon sizes")
+        except Exception as e:
+            print(f"⚠️  Could not validate ICO file: {e}")
 
 exe = EXE(
     pyz,
@@ -166,6 +182,9 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=icon,
+    version='version_info.txt' if os.path.exists('version_info.txt') else None,
+    uac_admin=False,  # Don't require admin
+    uac_uiaccess=False,  # Don't require UI access
 )
 
 # macOS specific: Create .app bundle
