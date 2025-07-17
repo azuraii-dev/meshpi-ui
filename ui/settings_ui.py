@@ -263,11 +263,8 @@ class SettingsUI:
         try:
             # Apply theme immediately with improved error handling
             if self.theme_change_callback:
-                # Temporarily disable the combobox to prevent conflicts
-                self.theme_combo.configure(state="disabled")
-                
-                # Use after_idle to ensure UI updates are processed
-                self.parent.after_idle(lambda: self._apply_theme_safely(theme_name))
+                # Apply theme without manipulating combobox state to avoid widget errors
+                self.theme_change_callback(theme_name)
             else:
                 messagebox.showinfo("Preview", f"Theme '{theme_name}' would be applied.\nRestart to see changes.")
                 
@@ -279,11 +276,8 @@ class SettingsUI:
         """Apply theme safely with proper error handling"""
         try:
             self.theme_change_callback(theme_name)
-            # Re-enable the combobox after a short delay
-            self.parent.after(500, lambda: self.theme_combo.configure(state="readonly"))
         except Exception as e:
             logger.error(f"Error applying theme safely: {e}")
-            self.theme_combo.configure(state="readonly")  # Re-enable even on error
             
     def apply_settings(self):
         """Apply all settings"""

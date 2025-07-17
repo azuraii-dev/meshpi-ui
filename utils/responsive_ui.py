@@ -56,7 +56,11 @@ class ResponsiveContainer:
         # Canvas for scrolling (always present)
         # Configure background to match theme
         bg_color = self._get_theme_bg_color()
-        self.canvas = tk.Canvas(self.main_frame, highlightthickness=0, bg=bg_color)
+        self.canvas = tk.Canvas(self.main_frame, 
+                               highlightthickness=0, 
+                               bg=bg_color,
+                               bd=0,  # Remove border
+                               relief='flat')  # Flat relief
         self.canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Scrollbar (initially hidden)
@@ -73,20 +77,68 @@ class ResponsiveContainer:
         
         # Bind mouse wheel events
         self._bind_mouse_wheel()
+        
+        # Schedule a theme update after widget is fully initialized
+        self.parent.after(100, self._delayed_theme_setup)
+    
+    def _delayed_theme_setup(self):
+        """Set up theme after widget is fully initialized"""
+        try:
+            self.update_theme()
+        except Exception as e:
+            logger.debug(f"Error in delayed theme setup: {e}")
     
     def _get_theme_bg_color(self):
         """Get the background color from the current theme"""
         try:
             # Get the background color from a ttk Frame
             style = ttk.Style()
+            
+            # Try multiple style elements to find background color
+            bg_color = None
+            
+            # First try TFrame background
             bg_color = style.lookup('TFrame', 'background')
+            logger.debug(f"TFrame background: {bg_color}")
+            
+            # Try TNotebook.Tab for better theme integration
             if not bg_color:
-                # Fallback to window background
+                bg_color = style.lookup('TNotebook.Tab', 'background')
+                logger.debug(f"TNotebook.Tab background: {bg_color}")
+            
+            # Try TLabel background
+            if not bg_color:
                 bg_color = style.lookup('TLabel', 'background')
+                logger.debug(f"TLabel background: {bg_color}")
+                
+            # Try to get from the actual parent widget
+            if not bg_color and hasattr(self.parent, 'cget'):
+                try:
+                    bg_color = self.parent.cget('bg')
+                    logger.debug(f"Parent bg: {bg_color}")
+                except:
+                    pass
+            
+            # Try to get from the style's theme colors directly
             if not bg_color:
-                # Final fallback
-                bg_color = self.parent.cget('bg') if hasattr(self.parent, 'cget') else '#2b3e50'
+                theme_colors = style.theme_settings(style.theme.name)
+                if theme_colors and 'TFrame' in theme_colors:
+                    frame_settings = theme_colors['TFrame']
+                    if 'background' in frame_settings:
+                        bg_color = frame_settings['background']
+                        logger.debug(f"Theme TFrame background: {bg_color}")
+                        
+            # If still no color, use fallback based on theme name
+            if not bg_color:
+                theme_name = style.theme.name.lower()
+                if any(dark in theme_name for dark in ['dark', 'cyborg', 'solar', 'superhero']):
+                    bg_color = '#2b3e50'  # Dark theme background
+                else:
+                    bg_color = '#ffffff'  # Light theme background
+                logger.debug(f"Fallback color for theme {theme_name}: {bg_color}")
+                    
             return bg_color
+            
         except Exception as e:
             logger.debug(f"Could not get theme background color: {e}")
             # Safe fallback color (darkly theme background)
@@ -255,6 +307,18 @@ class ResponsiveContainer:
         try:
             bg_color = self._get_theme_bg_color()
             self.canvas.configure(bg=bg_color)
+            
+            # Force canvas to update and redraw
+            self.canvas.update_idletasks()
+            
+            # Also update the content frame background if it's a tk.Frame
+            if hasattr(self.content_frame, 'configure'):
+                try:
+                    # Don't change ttk.Frame background as it's handled by the theme
+                    pass
+                except:
+                    pass
+                    
             logger.debug(f"Updated canvas background to {bg_color}")
         except Exception as e:
             logger.error(f"Error updating theme: {e}")
