@@ -140,11 +140,11 @@ class MapUI:
         """Create real map using tkintermapview"""
         logger.info("Creating real map (online mode)")
         
-        # Create map widget (online mode)
+        # Create map widget (online mode) with responsive sizing
         self.map_widget = tkintermapview.TkinterMapView(
             self.map_viz_frame,
-            width=400,
-            height=400,
+            width=600,
+            height=500,
             corner_radius=0
         )
         
@@ -168,6 +168,12 @@ class MapUI:
         
         self.map_widget.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
+        # Add resize binding for responsive map sizing
+        self.map_viz_frame.bind('<Configure>', self._on_map_frame_resize)
+        
+        # Apply performance optimizations
+        self.optimize_map_performance()
+        
         # Update frame title with current layer
         self.update_map_frame_title()
         
@@ -180,41 +186,41 @@ class MapUI:
         # Map layer selection
         ttk.Label(layer_frame, text="Map Layer:").grid(row=0, column=0, padx=(0, 10))
         
-        # Define available map layers
+        # Define available map layers (optimized for performance)
         self.map_layers = {
             "OpenStreetMap": {
-                "url": "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 "max_zoom": 19,
                 "attribution": "© OpenStreetMap contributors"
             },
             "Satellite (Esri)": {
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-                "max_zoom": 19,
+                "max_zoom": 18,  # Reduced for better performance
                 "attribution": "© Esri, Maxar, Earthstar Geographics"
             },
             "Satellite (Google)": {
-                "url": "http://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
-                "max_zoom": 20,
+                "url": "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                "max_zoom": 18,  # Reduced for better performance
                 "attribution": "© Google"
             },
             "Hybrid (Google)": {
-                "url": "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
-                "max_zoom": 20,
+                "url": "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+                "max_zoom": 18,  # Reduced for better performance
                 "attribution": "© Google"
             },
             "Topo (OpenTopo)": {
-                "url": "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
-                "max_zoom": 17,
+                "url": "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+                "max_zoom": 16,  # Reduced for better performance
                 "attribution": "© OpenTopoMap, © OpenStreetMap contributors"
             },
             "Light Theme": {
-                "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
-                "max_zoom": 19,
+                "url": "https://cartodb-basemaps-c.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
+                "max_zoom": 18,  # Reduced for better performance
                 "attribution": "© CartoDB, © OpenStreetMap contributors"
             },
             "Dark Theme": {
-                "url": "https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
-                "max_zoom": 19,
+                "url": "https://cartodb-basemaps-c.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png",
+                "max_zoom": 18,  # Reduced for better performance
                 "attribution": "© CartoDB, © OpenStreetMap contributors"
             }
         }
@@ -228,7 +234,7 @@ class MapUI:
         ttk.Button(layer_frame, text="🔄", command=self.refresh_map, width=3).grid(row=0, column=2)
         
     def apply_map_layer(self):
-        """Apply the selected map layer to the map widget"""
+        """Apply the selected map layer to the map widget with improved tile loading"""
         if not self.map_widget or not hasattr(self, 'map_layers') or not self.map_layers:
             return
             
@@ -240,11 +246,31 @@ class MapUI:
                 
             layer_config = self.map_layers[selected_layer]
             
-            # Set the tile server
+            # Store current state before changing layers
+            try:
+                current_position = self.map_widget.get_position()
+                current_zoom = getattr(self.map_widget, 'zoom', 10)
+            except:
+                current_position = None
+                current_zoom = 10
+            
+            # Set the tile server with error handling
             self.map_widget.set_tile_server(
                 layer_config["url"], 
                 max_zoom=layer_config["max_zoom"]
             )
+            
+            # Force a refresh to clear old tiles
+            if hasattr(self.map_widget, 'refresh'):
+                self.map_widget.refresh()
+            
+            # Restore position if we had one
+            if current_position:
+                try:
+                    self.map_widget.set_position(current_position[0], current_position[1])
+                    self.map_widget.set_zoom(current_zoom)
+                except:
+                    pass
             
             logger.info(f"Applied map layer: {selected_layer}")
             
@@ -256,30 +282,75 @@ class MapUI:
                     "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png", 
                     max_zoom=19
                 )
+                logger.info("Fallback to OpenStreetMap applied")
             except Exception as fallback_error:
                 logger.error(f"Error applying fallback layer: {fallback_error}")
                 
     def on_layer_changed(self, event=None):
-        """Handle map layer selection change"""
-        if hasattr(self, 'map_widget') and self.map_widget:
+        """Handle map layer selection change with improved tile loading"""
+        if not hasattr(self, 'map_widget') or not self.map_widget:
+            return
+            
+        # Prevent rapid layer switching
+        if hasattr(self, '_layer_switch_pending') and self._layer_switch_pending:
+            return
+            
+        self._layer_switch_pending = True
+        
+        try:
+            # Apply new layer (this now handles position preservation internally)
             self.apply_map_layer()
             self.update_map_frame_title()
             
-            # Store current position and zoom to maintain view
-            try:
-                current_position = self.map_widget.get_position()
-                # Try different zoom methods - get_zoom() may not exist in this version
-                try:
-                    current_zoom = self.map_widget.get_zoom()
-                except AttributeError:
-                    # Fallback: use zoom property or default zoom
-                    current_zoom = getattr(self.map_widget, 'zoom', 10)
+            # Allow sufficient time for tiles to load and render
+            self.parent.after(500, self._layer_switch_complete)
+            
+        except Exception as e:
+            logger.error(f"Error in layer change: {e}")
+            self._layer_switch_pending = False
+    
+    def _layer_switch_complete(self):
+        """Mark layer switch as complete"""
+        self._layer_switch_pending = False
+    
+    def _on_map_frame_resize(self, event=None):
+        """Handle map frame resize for responsive sizing"""
+        if not hasattr(self, 'map_widget') or not self.map_widget:
+            return
+            
+        try:
+            # Get the frame size
+            frame_width = self.map_viz_frame.winfo_width()
+            frame_height = self.map_viz_frame.winfo_height()
+            
+            # Only resize if we have valid dimensions
+            if frame_width > 100 and frame_height > 100:
+                # Account for controls and padding
+                map_width = max(400, frame_width - 20)
+                map_height = max(300, frame_height - 80)  # Leave space for controls
                 
-                # Small delay to let tiles load, then restore position
-                self.parent.after(100, lambda: self.restore_map_view(current_position, current_zoom))
+                # Update map widget size
+                self.map_widget.configure(width=map_width, height=map_height)
                 
-            except Exception as e:
-                logger.debug(f"Could not preserve map view: {e}")
+        except Exception as e:
+            logger.debug(f"Error resizing map: {e}")
+    
+    def optimize_map_performance(self):
+        """Apply performance optimizations to the map widget"""
+        if not hasattr(self, 'map_widget') or not self.map_widget:
+            return
+            
+        try:
+            # Set reasonable tile cache size if available
+            if hasattr(self.map_widget, 'set_tile_cache_size'):
+                self.map_widget.set_tile_cache_size(100)  # Cache 100 tiles
+                
+            # Disable unnecessary features for better performance
+            if hasattr(self.map_widget, 'set_double_click_zoom'):
+                self.map_widget.set_double_click_zoom(True)
+                
+        except Exception as e:
+            logger.debug(f"Could not apply performance optimizations: {e}")
                 
     def restore_map_view(self, position, zoom):
         """Restore map position and zoom after layer change"""
@@ -343,7 +414,7 @@ class MapUI:
         """Create simple coordinate plot as fallback"""
         logger.info("Creating coordinate plot fallback")
         
-        self.coordinate_canvas = tk.Canvas(self.map_viz_frame, bg="lightgray", width=400, height=400)
+        self.coordinate_canvas = tk.Canvas(self.map_viz_frame, bg="lightgray", width=600, height=500)
         self.coordinate_canvas.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Add grid lines
