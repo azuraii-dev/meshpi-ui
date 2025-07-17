@@ -519,20 +519,98 @@ class MeshtasticApp:
         """Change the application theme"""
         try:
             if hasattr(self.root, 'style'):
-                self.root.style.theme_use(theme_name)
-                logger.info(f"Theme changed to: {theme_name}")
+                logger.info(f"Changing theme from {self.root.style.theme.name} to {theme_name}")
+                
+                # Apply theme with error isolation
+                try:
+                    # Force focus away from any comboboxes to prevent widget errors
+                    self.root.focus_set()
+                    
+                    # Give a moment for any dropdowns to close
+                    self.root.update_idletasks()
+                    
+                    self.root.style.theme_use(theme_name)
+                    logger.info(f"Theme successfully changed to: {theme_name}")
+                except Exception as theme_error:
+                    # Check if it's the specific combobox error we're seeing
+                    if "combobox.popdown" in str(theme_error):
+                        logger.warning(f"Combobox dropdown interference during theme change: {theme_error}")
+                        # The theme might have still changed despite the error, so continue with updates
+                        logger.info("Continuing with canvas updates despite combobox error")
+                    else:
+                        logger.error(f"Error applying theme {theme_name}: {theme_error}")
+                        return  # Don't continue if theme change failed
+                
+                # Save theme preference immediately
+                try:
+                    if self.ui_config:
+                        self.ui_config.set_theme(theme_name)
+                        logger.debug("Theme preference saved")
+                except Exception as save_error:
+                    logger.error(f"Error saving theme preference: {save_error}")
                 
                 # Update responsive container backgrounds to match new theme
-                if hasattr(self, 'settings_ui') and hasattr(self.settings_ui, 'responsive_container'):
-                    self.settings_ui.responsive_container.update_theme()
-                if hasattr(self, 'config_ui') and hasattr(self.config_ui, 'responsive_container'):
-                    self.config_ui.responsive_container.update_theme()
-                if hasattr(self, 'emergency_ui') and hasattr(self.emergency_ui, 'responsive_container'):
-                    self.emergency_ui.responsive_container.update_theme()
+                # Try immediate update first, then delayed backup
+                def update_responsive_containers_immediate():
+                    logger.debug("Immediate responsive container theme updates...")
+                    try:
+                        if hasattr(self, 'settings_ui') and hasattr(self.settings_ui, 'responsive_container'):
+                            self.settings_ui.responsive_container.update_theme()
+                        if hasattr(self, 'config_ui') and hasattr(self.config_ui, 'responsive_container'):
+                            self.config_ui.responsive_container.update_theme()
+                        if hasattr(self, 'emergency_ui') and hasattr(self.emergency_ui, 'responsive_container'):
+                            self.emergency_ui.responsive_container.update_theme()
+                        if hasattr(self, 'chat_ui') and hasattr(self.chat_ui, 'update_theme'):
+                            self.chat_ui.update_theme()
+                    except Exception as e:
+                        logger.debug(f"Immediate update failed: {e}")
                 
-                # Save theme preference
-                if self.ui_config:
-                    self.ui_config.set_theme(theme_name)
+                def update_responsive_containers():
+                    logger.info("Starting responsive container theme updates...")
+                    try:
+                        if hasattr(self, 'settings_ui') and hasattr(self.settings_ui, 'responsive_container'):
+                            logger.info("Updating settings UI responsive container theme")
+                            self.settings_ui.responsive_container.update_theme()
+                    except Exception as e:
+                        logger.error(f"Error updating settings UI theme: {e}")
+                    
+                    try:
+                        if hasattr(self, 'config_ui') and hasattr(self.config_ui, 'responsive_container'):
+                            logger.info("Updating config UI responsive container theme")
+                            self.config_ui.responsive_container.update_theme()
+                    except Exception as e:
+                        logger.error(f"Error updating config UI theme: {e}")
+                    
+                    try:
+                        if hasattr(self, 'emergency_ui') and hasattr(self.emergency_ui, 'responsive_container'):
+                            logger.info("Updating emergency UI responsive container theme")
+                            self.emergency_ui.responsive_container.update_theme()
+                    except Exception as e:
+                        logger.error(f"Error updating emergency UI theme: {e}")
+                    
+                    # Also update chat UI in delayed update  
+                    try:
+                        if hasattr(self, 'chat_ui') and hasattr(self.chat_ui, 'update_theme'):
+                            logger.info("Updating chat UI theme")
+                            self.chat_ui.update_theme()
+                    except Exception as e:
+                        logger.error(f"Error updating chat UI theme: {e}")
+                    
+                    logger.info("Completed responsive container theme updates")
+                
+                # Try immediate update for fast feedback
+                self.root.after_idle(update_responsive_containers_immediate)
+                
+                # Also update chat UI theme immediately
+                try:
+                    if hasattr(self, 'chat_ui') and hasattr(self.chat_ui, 'update_theme'):
+                        self.chat_ui.update_theme()
+                        logger.debug("Updated chat UI theme immediately")
+                except Exception as e:
+                    logger.error(f"Error updating chat UI theme immediately: {e}")
+                
+                # Schedule delayed update as backup
+                self.root.after(100, update_responsive_containers)
                     
             else:
                 logger.warning("Theme change not supported - restart required")
@@ -540,6 +618,42 @@ class MeshtasticApp:
         except Exception as e:
             logger.error(f"Error changing theme: {e}")
             # Don't show error popup for theme changes - just log it
+    
+    def _retry_theme_change(self, theme_name: str):
+        """Retry theme change after combobox interference"""
+        try:
+            logger.info(f"Retrying theme change to: {theme_name}")
+            self.root.style.theme_use(theme_name)
+            logger.info(f"Theme successfully changed to: {theme_name} (retry)")
+            
+            # Save theme preference
+            if self.ui_config:
+                self.ui_config.set_theme(theme_name)
+                
+            # Update responsive containers
+            def update_responsive_containers():
+                try:
+                    if hasattr(self, 'settings_ui') and hasattr(self.settings_ui, 'responsive_container'):
+                        self.settings_ui.responsive_container.update_theme()
+                except Exception as e:
+                    logger.error(f"Error updating settings UI theme: {e}")
+                
+                try:
+                    if hasattr(self, 'config_ui') and hasattr(self.config_ui, 'responsive_container'):
+                        self.config_ui.responsive_container.update_theme()
+                except Exception as e:
+                    logger.error(f"Error updating config UI theme: {e}")
+                
+                try:
+                    if hasattr(self, 'emergency_ui') and hasattr(self.emergency_ui, 'responsive_container'):
+                        self.emergency_ui.responsive_container.update_theme()
+                except Exception as e:
+                    logger.error(f"Error updating emergency UI theme: {e}")
+            
+            self.root.after(200, update_responsive_containers)
+            
+        except Exception as e:
+            logger.error(f"Failed to retry theme change: {e}")
 
 def main():
     """Main application entry point"""

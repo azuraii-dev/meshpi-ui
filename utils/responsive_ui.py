@@ -305,23 +305,45 @@ class ResponsiveContainer:
     def update_theme(self):
         """Update canvas background to match current theme"""
         try:
+            # Get the new background color
             bg_color = self._get_theme_bg_color()
+            old_color = self.canvas.cget('bg')
+            
+            logger.info(f"Updating canvas theme: {old_color} -> {bg_color}")
+            
+            # Configure the canvas background
             self.canvas.configure(bg=bg_color)
             
-            # Force canvas to update and redraw
+            # Force multiple update cycles to ensure the change takes effect
             self.canvas.update_idletasks()
+            self.canvas.update()
             
-            # Also update the content frame background if it's a tk.Frame
-            if hasattr(self.content_frame, 'configure'):
-                try:
-                    # Don't change ttk.Frame background as it's handled by the theme
-                    pass
-                except:
-                    pass
+            # Force a redraw by triggering a configure event
+            self.canvas.event_generate('<Configure>')
+            
+            # Schedule a quick follow-up to ensure it sticks
+            self.parent.after(20, lambda: self._force_canvas_redraw(bg_color))
                     
-            logger.debug(f"Updated canvas background to {bg_color}")
+            logger.info(f"Canvas background updated to {bg_color}")
         except Exception as e:
             logger.error(f"Error updating theme: {e}")
+    
+    def _force_canvas_redraw(self, bg_color):
+        """Force canvas to redraw with new background color"""
+        try:
+            # Set the background again
+            self.canvas.configure(bg=bg_color)
+            
+            # Get current scroll region and reset it to force redraw
+            current_scroll = self.canvas.cget('scrollregion')
+            if current_scroll:
+                self.canvas.configure(scrollregion='')
+                self.canvas.update_idletasks()
+                self.canvas.configure(scrollregion=current_scroll)
+            
+            logger.debug(f"Forced canvas redraw with color {bg_color}")
+        except Exception as e:
+            logger.debug(f"Error in forced canvas redraw: {e}")
 
 
 def create_responsive_tab(parent, padding="10", min_scroll_threshold=50):

@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime
+import ttkbootstrap
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,9 @@ class ChatUI:
         
         # Create chat interface
         self.create_widgets()
+        
+        # Apply initial theme
+        self.update_theme()
         
     def create_widgets(self):
         """Create chat interface tab"""
@@ -571,4 +575,64 @@ class ChatUI:
                 self.update_message_status(error_id, 'failed')
                 logger.warning(f"Message routing failed for ID: {error_id}")
         except Exception as e:
-            logger.error(f"Error handling routing error: {e}") 
+            logger.error(f"Error handling routing error: {e}")
+    
+    def update_theme(self):
+        """Update chat UI colors to match current theme"""
+        try:
+            # Get theme colors
+            style = ttkbootstrap.Style()
+            
+            # Get background and foreground colors from theme
+            bg_color = style.lookup('TFrame', 'background')
+            fg_color = style.lookup('TLabel', 'foreground')
+            
+            # Fallback colors if lookup fails
+            if not bg_color:
+                theme_name = style.theme.name.lower()
+                if any(dark in theme_name for dark in ['dark', 'cyborg', 'solar', 'superhero', 'vapor']):
+                    bg_color = '#2b3e50'  # Dark theme background
+                    fg_color = '#ffffff'  # Light text
+                else:
+                    bg_color = '#ffffff'  # Light theme background
+                    fg_color = '#000000'  # Dark text
+            
+            if not fg_color:
+                # Auto-determine text color based on background
+                if bg_color and bg_color.startswith('#'):
+                    # Simple brightness check
+                    hex_color = bg_color[1:]
+                    if len(hex_color) == 6:
+                        r = int(hex_color[0:2], 16)
+                        g = int(hex_color[2:4], 16) 
+                        b = int(hex_color[4:6], 16)
+                        brightness = (r * 299 + g * 587 + b * 114) / 1000
+                        fg_color = '#000000' if brightness > 128 else '#ffffff'
+                    else:
+                        fg_color = '#ffffff' if 'dark' in style.theme.name.lower() else '#000000'
+                else:
+                    fg_color = '#ffffff' if 'dark' in style.theme.name.lower() else '#000000'
+            
+            # Update the ScrolledText widget colors
+            if hasattr(self, 'message_display'):
+                self.message_display.config(
+                    bg=bg_color,
+                    fg=fg_color,
+                    insertbackground=fg_color,  # Cursor color
+                    selectbackground='#0078d4',  # Selection background
+                    selectforeground='#ffffff'   # Selection text
+                )
+                
+                # Also update the scrollbar if possible
+                try:
+                    # Get the scrollbar from the ScrolledText widget
+                    scrollbar = getattr(self.message_display, 'vbar', None)
+                    if scrollbar:
+                        scrollbar.config(bg=bg_color)
+                except:
+                    pass
+                    
+            logger.debug(f"Updated chat UI theme: bg={bg_color}, fg={fg_color}")
+            
+        except Exception as e:
+            logger.error(f"Error updating chat UI theme: {e}") 
