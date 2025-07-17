@@ -70,6 +70,7 @@ map_cache/
 
 # Configuration files (if they contain sensitive data)
 config.json
+user_config.json
 *.config
 
 # Backup files
