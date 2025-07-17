@@ -54,7 +54,9 @@ class ResponsiveContainer:
         self.main_frame.rowconfigure(0, weight=1)
         
         # Canvas for scrolling (always present)
-        self.canvas = tk.Canvas(self.main_frame, highlightthickness=0)
+        # Configure background to match theme
+        bg_color = self._get_theme_bg_color()
+        self.canvas = tk.Canvas(self.main_frame, highlightthickness=0, bg=bg_color)
         self.canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Scrollbar (initially hidden)
@@ -71,6 +73,24 @@ class ResponsiveContainer:
         
         # Bind mouse wheel events
         self._bind_mouse_wheel()
+    
+    def _get_theme_bg_color(self):
+        """Get the background color from the current theme"""
+        try:
+            # Get the background color from a ttk Frame
+            style = ttk.Style()
+            bg_color = style.lookup('TFrame', 'background')
+            if not bg_color:
+                # Fallback to window background
+                bg_color = style.lookup('TLabel', 'background')
+            if not bg_color:
+                # Final fallback
+                bg_color = self.parent.cget('bg') if hasattr(self.parent, 'cget') else '#2b3e50'
+            return bg_color
+        except Exception as e:
+            logger.debug(f"Could not get theme background color: {e}")
+            # Safe fallback color (darkly theme background)
+            return '#2b3e50'
         
     def _bind_mouse_wheel(self):
         """Bind mouse wheel events for scrolling using a global approach"""
@@ -229,6 +249,15 @@ class ResponsiveContainer:
         """Update the minimum scroll threshold"""
         self.min_scroll_threshold = threshold
         self.force_scroll_check()
+    
+    def update_theme(self):
+        """Update canvas background to match current theme"""
+        try:
+            bg_color = self._get_theme_bg_color()
+            self.canvas.configure(bg=bg_color)
+            logger.debug(f"Updated canvas background to {bg_color}")
+        except Exception as e:
+            logger.error(f"Error updating theme: {e}")
 
 
 def create_responsive_tab(parent, padding="10", min_scroll_threshold=50):

@@ -522,6 +522,14 @@ class MeshtasticApp:
                 self.root.style.theme_use(theme_name)
                 logger.info(f"Theme changed to: {theme_name}")
                 
+                # Update responsive container backgrounds to match new theme
+                if hasattr(self, 'settings_ui') and hasattr(self.settings_ui, 'responsive_container'):
+                    self.settings_ui.responsive_container.update_theme()
+                if hasattr(self, 'config_ui') and hasattr(self.config_ui, 'responsive_container'):
+                    self.config_ui.responsive_container.update_theme()
+                if hasattr(self, 'emergency_ui') and hasattr(self.emergency_ui, 'responsive_container'):
+                    self.emergency_ui.responsive_container.update_theme()
+                
                 # Save theme preference
                 if self.ui_config:
                     self.ui_config.set_theme(theme_name)
