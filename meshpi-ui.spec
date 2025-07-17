@@ -158,20 +158,17 @@ else:
         except Exception as e:
             print(f"[WARNING] Could not validate ICO file: {e}")
 
+# CHANGED: Switch to onedir mode to fix macOS restart icon issue
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
+    [],  # CHANGED: Empty list instead of a.binaries for onedir mode
+    exclude_binaries=True,  # CHANGED: Exclude binaries for onedir mode
     name=exe_name,
-    debug=True,  # Enable debug mode for troubleshooting
+    debug=False,  # CHANGED: Disable debug for cleaner output
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,  # Compress executable
-    upx_exclude=[],
-    runtime_tmpdir=None,
+    upx=False,  # CHANGED: Disable UPX for better compatibility
     console=console,
     disable_windowed_traceback=False,
     argv_emulation=False,  # Critical: Keep this False for macOS
@@ -184,10 +181,22 @@ exe = EXE(
     uac_uiaccess=False,  # Don't require UI access
 )
 
+# CHANGED: Add COLLECT for onedir mode
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name=exe_name
+)
+
 # macOS specific: Create .app bundle
 if platform.startswith('darwin'):
     app = BUNDLE(
-        exe,
+        coll,  # CHANGED: Use coll instead of exe for onedir mode
         name='MeshtasticUI.app',
         icon=icon,
         bundle_identifier='com.meshpi.ui',
@@ -204,5 +213,11 @@ if platform.startswith('darwin'):
             'NSPrincipalClass': 'NSApplication',  # Ensure proper app initialization
             'NSMainNibFile': '',  # Prevent NIB file loading issues
             'LSUIElement': False,  # Explicitly show in dock (opposite of background app)
+            # ADDED: Enhanced icon configuration for better macOS integration
+            'CFBundleIconFile': 'icon.icns',
+            'CFBundleIconName': 'icon.icns',
+            'LSEnvironment': {
+                'DYLD_LIBRARY_PATH': '@executable_path/../Frameworks'
+            },
         },
     ) 
